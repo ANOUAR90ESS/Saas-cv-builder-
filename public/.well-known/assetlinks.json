@@ -1,0 +1,16 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.dexacv",
+      "sha256_cert_fingerprints": [
+        "17:41:8F:67:EA:E2:DA:8C:A2:96:16:A1:30:FE:2D:6D:E6:53:C8:0E:8B:8A:4E:3A:08:F9:4F:D9:A8:FE:0A:E8",
+        "03:EC:14:7D:C3:D5:FB:63:70:6B:BB:3D:EF:63:84:31:7F:04:C7:74:E2:5F:E8:AC:B7:28:AD:2D:5D:23:E7:E5",
+        "E1:DD:AC:9A:9C:B0:13:82:06:5A:81:AE:11:40:08:62:F7:87:D6:2C:C7:0E:DC:27:39:32:73:26:1A:32:20:7B"
+      ]
+    }
+  }
+]

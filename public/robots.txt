@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Private / authenticated routes and the CV editor. These hold the user's own
+# CV content and must never be indexed.
+Disallow: /builder
+Disallow: /projects
+Disallow: /account
+Disallow: /ThankYou
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /oauth-consent
+
+Sitemap: https://dexacv.com/sitemap.xml

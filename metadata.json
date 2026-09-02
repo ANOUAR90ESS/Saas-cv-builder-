@@ -1,0 +1,8 @@
+{
+  "name": "DexaCV",
+  "description": "DexaCV is an AI-powered CV builder that helps you create professional, ATS-friendly CVs and prepare for your next job. Live preview, multiple templates, PDF and DOCX export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

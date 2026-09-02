@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#4f46e5" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="canonical" href="https://dexacv.com/" />
+    <title>DexaCV – AI CV Builder | Build a CV That Gets Noticed</title>
+    <meta name="description" content="DexaCV is an AI-powered CV builder that helps you create professional, ATS-friendly CVs, explore career opportunities, and prepare for job interviews." />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="DexaCV" />
+    <meta name="google-site-verification" content="h3ihLLtXccWeO8cCA_KzPEIfRDc_kaxenS4tvy5zYSM" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="DexaCV" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="DexaCV – AI CV Builder | Build a CV That Gets Noticed" />
+    <meta property="og:description" content="DexaCV is an AI-powered CV builder that helps you create professional, ATS-friendly CVs and prepare for your next job." />
+    <meta property="og:url" content="https://dexacv.com/" />
+    <meta property="og:image" content="https://media.base44.com/images/public/6a8a351cc082996c84425f54/dd31ad50d_generated_image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="DexaCV AI CV Builder" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DexaCV – AI CV Builder | Build a CV That Gets Noticed" />
+    <meta name="twitter:description" content="DexaCV is an AI-powered CV builder that helps you create professional, ATS-friendly CVs and prepare for your next job." />
+    <meta name="twitter:image" content="https://media.base44.com/images/public/6a8a351cc082996c84425f54/dd31ad50d_generated_image.png" />
+
+    <!-- Structured data: brand entity. Establishes DexaCV as a software
+         product for building CVs / resumes, not a generic or medical term. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "DexaCV",
+      "alternateName": "DexaCV AI CV Builder",
+      "url": "https://dexacv.com/",
+      "logo": "https://dexacv.com/favicon.svg",
+      "image": "https://media.base44.com/images/public/6a8a351cc082996c84425f54/dd31ad50d_generated_image.png",
+      "description": "DexaCV is an AI-powered CV builder that helps users create professional, ATS-friendly CVs and prepare for job opportunities.",
+      "knowsAbout": ["CV writing", "Resume building", "ATS-friendly CVs", "Job applications", "Career development"]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "DexaCV",
+      "url": "https://dexacv.com/",
+      "description": "AI-powered CV builder for creating professional, ATS-friendly CVs.",
+      "publisher": { "@type": "Organization", "name": "DexaCV", "url": "https://dexacv.com/" }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "DexaCV",
+      "url": "https://dexacv.com/",
+      "description": "AI-powered CV builder for creating professional and ATS-friendly CVs.",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Resume Builder",
+      "operatingSystem": "Web",
+      "browserRequirements": "Requires JavaScript.",
+      "featureList": "CV builder, professional CV templates, live preview, PDF export, DOCX export, AI writing assistance, ATS-friendly layouts",
+      "publisher": { "@type": "Organization", "name": "DexaCV", "url": "https://dexacv.com/" }
+    }
+    </script>
+
+    <style>
+      /* Boot screen: one flat brand-purple surface, edge to edge. Inlined so it
+         needs no stylesheet fetch and cannot flash white while CSS loads. */
+      #boot-screen {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: #4f46e5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        opacity: 1;
+        transition: opacity 260ms ease;
+      }
+      #boot-screen.boot-done { opacity: 0; pointer-events: none; }
+      /* Same mark as the app icon, so the system splash hands over to this
+         screen without the logo changing shape or size mid-launch. */
+      #boot-screen .boot-mark {
+        width: clamp(112px, 34vw, 168px);
+        height: auto;
+      }
+      #boot-screen .boot-name {
+        margin-top: 22px;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+        font-size: 25px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: #ffffff;
+      }
+      #boot-screen .boot-spinner {
+        margin-top: 40px;
+        width: 22px;
+        height: 22px;
+        border: 2.5px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: boot-spin 0.7s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-screen .boot-spinner { animation-duration: 2.4s; }
+        #boot-screen { transition: none; }
+      }
+    </style>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Archivo:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Lora:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=DM+Serif+Display:wght@400&family=Playfair+Display:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- Boot screen. Lives in the static HTML so it paints on the very first
+         frame, before any JavaScript runs — that is what removes the white
+         flash between the installed app's splash screen and the first rendered
+         page. It uses the same colour as the manifest's background_color and
+         theme_color, so splash, status bar and boot screen are one surface.
+         Removed by src/App.jsx once the first route has rendered, with a
+         safety timeout in src/main.jsx so it can never strand the app. -->
+    <div id="boot-screen" aria-hidden="true">
+      <svg class="boot-mark" viewBox="0 0 64 64" width="128" height="128">
+        <defs>
+          <linearGradient id="boot-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#4f46e5" /><stop offset="1" stop-color="#7c3aed" />
+          </linearGradient>
+        </defs>
+        <rect width="64" height="64" rx="14" fill="url(#boot-grad)" />
+        <path d="M16.5 14 H29.5 A18 18 0 0 1 29.5 50 H16.5 Z M24.5 22 H29.5 A10 10 0 0 1 29.5 42 H24.5 Z" fill="#ffffff" fill-rule="evenodd" />
+      </svg>
+      <div class="boot-name">DexaCV</div>
+      <div class="boot-spinner"></div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

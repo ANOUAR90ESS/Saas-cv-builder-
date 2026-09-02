@@ -1,0 +1,52 @@
+#env
+.env
+.env.*
+
+# Logs
+/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.env
+.vite
+base44/.app.jsonc
+
+# Android / Gradle build output. Machine-local state that must never be
+# committed — .gradle/ alone was carrying ~884 KB of one machine's build cache.
+.gradle/
+build/
+local.properties
+*.apk
+*.aab
+captures/
+.cxx/
+
+# Signing material. A keystore in the repository would let anyone publish an
+# update to the Play listing.
+*.jks
+*.keystore
+keystore.properties
+
+# Deno resolves npm packages here when the functions are type-checked or served
+# locally; it is a cache, not source.
+supabase/functions/node_modules/

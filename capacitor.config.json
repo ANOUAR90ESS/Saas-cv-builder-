@@ -1,0 +1,9 @@
+{
+  "appId": "com.dexacv",
+  "appName": "DexaCV",
+  "webDir": "dist",
+  "server": {
+    "url": "https://dexacv.com",
+    "androidScheme": "https"
+  }
+}
