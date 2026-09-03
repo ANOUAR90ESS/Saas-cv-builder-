@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { Download, FileType, Check, Eye, Pencil, LayoutTemplate, Palette, ListOrdered, User, Sparkles, Printer, Linkedin, FolderOpen, ChevronLeft, HelpCircle, Gauge, X } from "lucide-react";
+import { Download, FileType, Check, Eye, Pencil, LayoutTemplate, Palette, ListOrdered, User, Sparkles, Printer, Linkedin, FolderOpen, ChevronLeft, HelpCircle, Gauge, X, ChevronDown, FileText } from "lucide-react";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import SheetSelect from "@/components/builder/SheetSelect";
 import { BRAND } from "@/components/Layout";
@@ -41,6 +41,7 @@ import { useLang } from "@/lib/i18n";
 import { TemplateLibraryDrawer } from "@/components/template-library";
 import { analyzeCvATS } from "@/lib/atsBenchmark";
 import { Target, Loader2, TrendingUp } from "lucide-react";
+import { triggerHaptic } from "@/lib/haptics";
 
 // Labels resolve through i18n at render time; the key doubles as the i18n key.
 const NAV = [
@@ -67,7 +68,7 @@ const NAV = [
 
 export default function Builder() {
   const { lang, t } = useLang();
-  const back = useSmartBack("/projects");
+  const back = useSmartBack("/");
   const location = useLocation();
   const [cv, setCv] = useState(null);
   const [active, setActive] = useState("personal");
@@ -81,6 +82,31 @@ export default function Builder() {
   const [exportNotice, setExportNotice] = useState("");
   const saveTimer = useRef(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const downloadMenuRef = useRef(null);
+
+  // Close download dropdown on outside click or Escape key
+  useEffect(() => {
+    if (!downloadMenuOpen) return;
+    const handleOutsideClick = (event) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(event.target)) {
+        setDownloadMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setDownloadMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("touchstart", handleOutsideClick);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("touchstart", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [downloadMenuOpen]);
 
   // Simulated ATS Benchmark live calculation
   const atsResult = useMemo(() => analyzeCvATS(cv), [cv]);
@@ -269,8 +295,16 @@ export default function Builder() {
     <div className="h-screen flex flex-col">
       <Seo title="CV Builder — DexaCV" description="Build and customize your CV with a live preview. Export to PDF or DOCX — free, no watermark." path="/builder" noindex />
       {/* Top bar */}
-      <div className="border-b border-border bg-background px-4 h-16 sm:h-14 flex items-center gap-2 sm:gap-3 shrink-0 safe-top overflow-hidden">
-        <button onClick={back} aria-label={t("builder.bar.back")} className="-ml-1 inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-lg text-muted-foreground hover:bg-muted transition shrink-0">
+      <div className="border-b border-border bg-background px-2.5 sm:px-4 h-16 sm:h-14 flex items-center gap-1.5 sm:gap-3 shrink-0 safe-top relative z-30 overflow-visible">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            back();
+          }}
+          aria-label={t("builder.bar.back")}
+          className="-ml-1 inline-flex items-center justify-center min-w-[36px] sm:min-w-[40px] min-h-[36px] sm:min-h-[40px] rounded-lg text-muted-foreground hover:bg-muted transition shrink-0 active:scale-95 cursor-pointer"
+        >
           <ChevronLeft size={22} />
         </button>
         <Link to="/" className="flex items-center gap-2 font-bold text-sm shrink-0">
@@ -281,7 +315,7 @@ export default function Builder() {
         <input
           value={cv.title}
           onChange={(e) => patch({ title: e.target.value })}
-          className="font-semibold text-base lg:text-sm bg-transparent focus:outline-none focus:bg-muted rounded px-1 py-0.5 min-w-0 flex-1 sm:flex-initial sm:max-w-[40vw]"
+          className="font-semibold text-sm sm:text-base lg:text-sm bg-transparent focus:outline-none focus:bg-muted rounded px-1 py-0.5 min-w-0 flex-1 sm:flex-initial sm:max-w-[40vw] truncate"
         />
         <span className={cn("text-xs flex items-center gap-1 transition shrink-0", saved ? "text-green-600" : "text-gray-400")}>
           {saved ? <Check size={13} /> : <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
@@ -357,27 +391,108 @@ export default function Builder() {
           <button onClick={doPrint} className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition">
             <Printer size={15} /> <span className="hidden md:inline">{t("builder.bar.print")}</span>
           </button>
-          {/* DOCX Export */}
-          <button
-            onClick={doExportDocx}
-            disabled={exportingDocx}
-            title="Download editable Microsoft Word document (.docx)"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-2.5 sm:px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition disabled:opacity-60"
-          >
-            {exportingDocx ? <Loader2 size={14} className="animate-spin text-primary" /> : <FileType size={15} />}
-            <span>DOCX</span>
-          </button>
-          {/* PDF Export via jsPDF */}
-          <button
-            onClick={doExportPDF}
-            disabled={exportingPdf}
-            title="Download PDF document using jsPDF"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3 sm:px-3.5 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition shadow-xs disabled:opacity-60"
-          >
-            {exportingPdf ? <Loader2 size={14} className="animate-spin" /> : <Download size={15} />}
-            <span className="hidden sm:inline">{t("builder.bar.downloadPdf")}</span>
-            <span className="sm:hidden">{t("builder.bar.pdf")}</span>
-          </button>
+          {/* Unified Download Menu (PDF & DOCX) */}
+          <div className="relative inline-block text-left shrink-0" ref={downloadMenuRef}>
+            <button
+              type="button"
+              onClick={() => setDownloadMenuOpen((prev) => !prev)}
+              disabled={exportingPdf || exportingDocx}
+              title="Download CV (PDF or DOCX)"
+              aria-label={t("builder.bar.download")}
+              aria-haspopup="true"
+              aria-expanded={downloadMenuOpen}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-2.5 sm:px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition shadow-xs disabled:opacity-60 shrink-0 select-none cursor-pointer whitespace-nowrap"
+            >
+              {exportingPdf || exportingDocx ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Download size={15} />
+              )}
+              <span>{t("builder.bar.download")}</span>
+              <span className="text-[11px] font-normal opacity-90 hidden sm:inline">(PDF / DOCX)</span>
+              <ChevronDown
+                size={14}
+                className={cn("opacity-80 transition-transform duration-200", downloadMenuOpen && "rotate-180")}
+              />
+            </button>
+
+            {downloadMenuOpen && (
+              <div
+                role="menu"
+                aria-orientation="vertical"
+                className="absolute right-0 mt-1.5 w-60 p-1.5 z-50 rounded-lg shadow-xl border border-border bg-popover text-popover-foreground animate-in fade-in zoom-in-95 duration-100"
+              >
+                {/* PDF Export Option */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setDownloadMenuOpen(false);
+                    triggerHaptic("medium");
+                    doExportPDF();
+                  }}
+                  disabled={exportingPdf}
+                  className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-md cursor-pointer hover:bg-accent focus:bg-accent transition text-left disabled:opacity-50"
+                >
+                  <div className="p-1.5 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 shrink-0 mt-0.5">
+                    <FileText size={16} />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      {t("builder.bar.downloadPdf")}
+                      <span className="text-[10px] font-medium px-1 rounded bg-muted text-muted-foreground border border-border">PDF</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      {t("builder.bar.downloadPdfDesc")}
+                    </div>
+                  </div>
+                </button>
+
+                {/* DOCX Export Option */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setDownloadMenuOpen(false);
+                    triggerHaptic("medium");
+                    doExportDocx();
+                  }}
+                  disabled={exportingDocx}
+                  className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-md cursor-pointer hover:bg-accent focus:bg-accent transition text-left disabled:opacity-50"
+                >
+                  <div className="p-1.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">
+                    <FileType size={16} />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      {t("builder.bar.downloadDocx")}
+                      <span className="text-[10px] font-medium px-1 rounded bg-muted text-muted-foreground border border-border">Word</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">
+                      {t("builder.bar.downloadDocxDesc")}
+                    </div>
+                  </div>
+                </button>
+
+                <div className="my-1 h-px bg-border" />
+
+                {/* Browser Print Option */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setDownloadMenuOpen(false);
+                    triggerHaptic("light");
+                    doPrint();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-accent focus:bg-accent transition text-left"
+                >
+                  <Printer size={15} className="shrink-0" />
+                  <span className="text-xs font-medium">{t("builder.bar.print")}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

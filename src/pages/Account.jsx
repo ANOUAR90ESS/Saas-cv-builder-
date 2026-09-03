@@ -5,13 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, User, KeyRound, FolderOpen, LogOut, Trash2, Loader2, ChevronLeft, LogIn, UserPlus, ShieldCheck } from "lucide-react";
+import { Mail, User, KeyRound, FolderOpen, LogOut, Trash2, Loader2, ChevronLeft, LogIn, UserPlus, ShieldCheck, SunMoon } from "lucide-react";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { useAuth } from "@/lib/AuthContext";
 import { updateProfile, changePassword as changeUserPassword } from "@/api/auth";
 import { deleteAccount } from "@/api/backend";
 import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
 import { loadAllCVs } from "@/lib/cvStorage";
+import { useSmartBack } from "@/hooks/useSmartBack";
 
 const LOCAL_KEYS = ["cvforge.cvs.v1", "cvforge.active.v1", "cvforge.activeid.v1"];
 
@@ -20,6 +22,7 @@ export default function Account() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const back = useSmartBack("/");
 
   const [name, setName] = useState(user?.full_name || "");
   const [savingName, setSavingName] = useState(false);
@@ -98,8 +101,8 @@ export default function Account() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <button
           type="button"
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"
+          onClick={back}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 cursor-pointer"
         >
           <ChevronLeft size={16} /> {t("account.back")}
         </button>
@@ -118,8 +121,24 @@ export default function Account() {
           )}
         </div>
 
-        {!user ? (
-          <div className="mt-6 space-y-5">
+        <div className="mt-6 space-y-5">
+          {/* Appearance & Theme switcher */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <SunMoon size={18} className="text-primary" /> Appearance & Theme
+              </CardTitle>
+              <CardDescription>
+                Toggle between light and dark modes or follow your system preference
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ThemeSwitcher />
+            </CardContent>
+          </Card>
+
+          {!user ? (
+            <div className="space-y-5">
             {/* Guest session card */}
             <Card className="border-primary/20 bg-card shadow-xs">
               <CardHeader>
@@ -178,7 +197,7 @@ export default function Account() {
             </Card>
           </div>
         ) : (
-          <div className="mt-6 space-y-5">
+          <div className="space-y-5">
             {/* Profile */}
             <Card>
               <CardHeader>
@@ -281,6 +300,7 @@ export default function Account() {
             </Card>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

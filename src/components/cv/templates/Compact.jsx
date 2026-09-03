@@ -1,5 +1,5 @@
 import React from "react";
-import { ContactLine, ExperienceList, EducationList, SimpleList, fontStack, fmtDate, SkillMeter, SECTION_LABELS } from "@/components/cv/SharedBits";
+import { ContactLine, SimpleList, fontStack, fmtDate, SkillMeter, SECTION_LABELS } from "@/components/cv/SharedBits";
 import { renderExtraSection } from "@/components/cv/ExtraSections";
 
 // Dense single-column layout to fit more content on one page.

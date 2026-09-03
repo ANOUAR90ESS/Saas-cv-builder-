@@ -1,5 +1,5 @@
 import React from "react";
-import { ExperienceList, EducationList, SimpleList, SkillMeter, fmtDate, SECTION_LABELS } from "@/components/cv/SharedBits";
+import { ExperienceList, EducationList, SimpleList, SkillMeter, fmtDate } from "@/components/cv/SharedBits";
 import { renderExtraSection } from "@/components/cv/ExtraSections";
 
 // Single-column modern body used by the newer templates. Each template supplies a

@@ -84,7 +84,7 @@ export default function Pillared({ cv }) {
       return (
         <section key={key} className="mb-5">
           {t("interests")}
-          <p className="text-[11px] text-center text-gray-700"><SimpleList items={cv.interests} /></p>
+          <SimpleList items={cv.interests} className="text-center" />
         </section>
       );
     return renderExtraSection(key, cv, t);

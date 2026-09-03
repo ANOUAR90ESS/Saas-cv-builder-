@@ -50,3 +50,4 @@ keystore.properties
 # Deno resolves npm packages here when the functions are type-checked or served
 # locally; it is a cache, not source.
 supabase/functions/node_modules/
+firebase-applet-config.json

@@ -9,7 +9,6 @@
 // Errors are normalised here too. A refusal for want of a session arrives as a
 // status on one call and a code in the body on another, and callers that have
 // to tell "sign in" from "try again" should not each learn both shapes.
-import { supabase, isSupabaseConfigured } from "@/api/supabase";
 
 /**
  * Thrown when the backend refused for want of a session. Retrying cannot help,
@@ -61,6 +60,82 @@ export async function aiAssist(action, { lang, text, context } = {}) {
 }
 
 /**
+ * Analyzes fit between a candidate CV and target job description.
+ */
+export async function analyzeJobFit({ jobDescription, cv, lang } = {}) {
+  return aiAssist("analyze_job_fit", {
+    lang,
+    context: { job_description: jobDescription, cv }
+  });
+}
+
+/**
+ * Generates a targeted, truthful cover letter matching candidate CV to a job.
+ */
+export async function generateCoverLetter({ jobTitle, company, jobDescription, cv, profile, tone, lang } = {}) {
+  return aiAssist("generate_cover_letter", {
+    lang,
+    context: {
+      job_title: jobTitle,
+      company,
+      job_description: jobDescription,
+      cv,
+      profile,
+      tone
+    }
+  });
+}
+
+/**
+ * Generates an interview question for practice.
+ */
+export async function getInterviewQuestion({ jobTitle, experienceLevel, interviewType, questionNumber, history, cv, lang } = {}) {
+  return aiAssist("interview_question", {
+    lang,
+    context: {
+      job_title: jobTitle,
+      experience_level: experienceLevel,
+      interview_type: interviewType,
+      question_number: questionNumber,
+      history,
+      cv
+    }
+  });
+}
+
+/**
+ * Evaluates candidate's answer to an interview question.
+ */
+export async function evaluateInterviewAnswer({ question, answer, jobTitle, experienceLevel, interviewType, cv, lang } = {}) {
+  return aiAssist("interview_evaluate", {
+    lang,
+    context: {
+      question,
+      answer,
+      job_title: jobTitle,
+      experience_level: experienceLevel,
+      interview_type: interviewType,
+      cv
+    }
+  });
+}
+
+/**
+ * Provides comprehensive debrief and summary for an interview session.
+ */
+export async function getInterviewSummary({ history, jobTitle, experienceLevel, interviewType, lang } = {}) {
+  return aiAssist("interview_summary", {
+    lang,
+    context: {
+      history,
+      job_title: jobTitle,
+      experience_level: experienceLevel,
+      interview_type: interviewType
+    }
+  });
+}
+
+/**
  * Turns a pasted or uploaded profile into the CV shape the builder uses.
  * `lang` is only a tie-breaker: imported content keeps the language it was
  * written in, because translating someone's own CV is not importing it.
@@ -72,34 +147,11 @@ export async function importProfile(payload = {}) {
 
 // ---------------------------------------------------------------- files
 
-// Read-public, write-open, and capped by type and size at the bucket — see the
-// migration that creates it for why those limits are the whole defence.
-const BUCKET = "uploads";
-
 /**
- * Stores a file and returns a URL that can be put straight into an `<img>` or
- * handed to the import parser. Callers never see the storage layout.
+ * Stores a file and returns a Data URL that can be put straight into an `<img>` or
+ * handed to the import parser. Runs purely local-first and works offline.
  */
 export async function uploadFile(file) {
-  if (isSupabaseConfigured) {
-    try {
-      const ext = (file.name?.match(/\.[a-z0-9]+$/i)?.[0] ?? "").toLowerCase();
-      const path = `${crypto.randomUUID()}${ext}`;
-
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-        contentType: file.type || undefined,
-        upsert: false,
-      });
-      if (!error) {
-        const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-        if (data?.publicUrl) return data.publicUrl;
-      }
-    } catch (e) {
-      console.warn("Storage upload failed, falling back to local file reader:", e);
-    }
-  }
-
-  // Fallback for offline/local mode: read file as base64 Data URL
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);

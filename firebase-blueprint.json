@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile representation in DexaCV",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "createdAt", "updatedAt"]
+    },
+    "CV": {
+      "title": "CV",
+      "description": "Curriculum Vitae / Resume document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "data": { "type": "object", "description": "Structured CV content sections" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "createdAt", "updatedAt"]
+    },
+    "CareerProfile": {
+      "title": "CareerProfile",
+      "description": "Public and private professional profile and portfolio",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "username": { "type": "string", "maxLength": 128 },
+        "isPublished": { "type": "boolean" },
+        "data": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "username", "isPublished", "createdAt", "updatedAt"]
+    },
+    "JobApplication": {
+      "title": "JobApplication",
+      "description": "Tracked job application in the career pipeline",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "company": { "type": "string", "maxLength": 150 },
+        "jobTitle": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "company", "jobTitle", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User account document stored under their authenticated UID"
+    },
+    "/cvs/{cvId}": {
+      "schema": "CV",
+      "description": "User created resume documents secured by userId"
+    },
+    "/career_profiles/{profileId}": {
+      "schema": "CareerProfile",
+      "description": "User career profile and portfolio document"
+    },
+    "/job_applications/{appId}": {
+      "schema": "JobApplication",
+      "description": "User job application record"
+    }
+  }
+}

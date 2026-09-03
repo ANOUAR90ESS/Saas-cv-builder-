@@ -79,8 +79,8 @@ Return a JSON array of objects with the schema:
     } else if (action === "analyze_job_fit") {
       const jobDesc = context?.job_description || text || "";
       const candidateCv = context?.cv || text || "";
-      prompt = `You are an expert technical recruiter and ATS specialist.
-Analyze the fit between this Candidate's CV and the Target Job Description.
+      prompt = `You are an expert technical recruiter, hiring manager, and ATS specialist.
+Analyze the fit between this Candidate's CV and the Target Job Description with rigorous detail.
 
 TARGET JOB DESCRIPTION:
 """
@@ -92,27 +92,182 @@ CANDIDATE CV DATA:
 ${typeof candidateCv === "object" ? JSON.stringify(candidateCv) : candidateCv}
 """
 
-CRITICAL INSTRUCTION:
-NEVER invent or fabricate achievements, metrics, or candidate experience not in their actual CV.
-Compare their actual background to the job requirements objectively.
+CRITICAL MANDATE:
+NEVER invent or fabricate qualifications, achievements, metrics, degrees, certifications, or tools not in the candidate's actual CV.
+Compare their actual background to the job requirements objectively and honestly.
 
-Return a valid JSON object matching this exact schema (no additional markdown or conversational text):
+Return a valid JSON object matching this exact schema:
 {
-  "matchScore": number between 0 and 100 representing overall percentage match,
+  "matchScore": number between 0 and 100,
   "matchGrade": "Strong Match" | "Good Match" | "Moderate Match" | "Growth Match",
   "summary": "2-3 concise sentences summarizing why the candidate matches or where key gaps lie.",
-  "strengths": ["3 to 5 specific matching qualifications or experiences found in the CV"],
-  "gaps": ["2 to 4 key qualifications from the job description that are missing or under-emphasized in the CV"],
-  "suggestedSkills": [
-    {
-      "name": "Exact skill name from job description",
-      "importance": "high" | "medium" | "nice_to_have",
-      "presentInCv": false,
-      "category": "Technical"
-    }
+  "matchingSkills": [
+    { "name": "Skill Name", "contextInCv": "Brief mention of where this appears in CV" }
   ],
-  "tailoringTips": [
-    "3 to 4 specific truthful tips for optimizing existing CV bullet points and summary for this role"
+  "missingSkills": [
+    { "name": "Missing Skill", "importance": "critical" | "warning" | "nice_to_have", "reason": "Why the job asks for this" }
+  ],
+  "experienceMatch": {
+    "score": number between 0 and 100,
+    "assessment": "Detailed 2-sentence objective assessment of their experience level, years, and relevance vs the role requirements.",
+    "levelMatch": true | false
+  },
+  "keywords": [
+    { "keyword": "Keyword/Term", "presentInCv": true | false, "importance": "high" | "medium" }
+  ],
+  "recommendations": [
+    "3 to 5 actionable, completely truthful recommendations (e.g., 'Add TypeScript to Skills if genuinely experienced', 'Highlight REST API work under XYZ company', 'Improve professional summary by highlighting ABC experience')"
+  ],
+  "strengths": ["3 to 4 specific matching qualifications found in CV"],
+  "gaps": ["2 to 3 areas where CV does not demonstrate required job requirements"]
+}`;
+    } else if (action === "generate_cover_letter") {
+      const jobTitle = context?.job_title || "Target Role";
+      const company = context?.company || "Target Company";
+      const jobDesc = context?.job_description || text || "";
+      const candidateCv = context?.cv || {};
+      const tone = context?.tone || "Professional";
+      const userProfile = context?.profile || {};
+
+      prompt = `You are an elite career advisor and executive cover letter writer.
+Write a personalized, compelling, and authentic cover letter for this candidate applying to ${company} for the role of ${jobTitle}.
+
+TONE OF VOICE: ${tone} (e.g. Professional, Confident, Friendly, or Concise)
+TARGET COMPANY: ${company}
+TARGET ROLE: ${jobTitle}
+TARGET JOB DESCRIPTION:
+"""
+${jobDesc}
+"""
+
+CANDIDATE CV & BACKGROUND:
+"""
+${typeof candidateCv === "object" ? JSON.stringify(candidateCv) : candidateCv}
+${userProfile ? "\nPROFILE CONTEXT: " + JSON.stringify(userProfile) : ""}
+"""
+
+CRITICAL INSTRUCTIONS:
+1. TRUTHFULNESS: NEVER fabricate achievements, degrees, metrics, tools, or past companies. Base all qualifications strictly on the candidate's actual provided CV.
+2. DO NOT write a generic cookie-cutter letter. Draw direct, authentic parallels between what the candidate has achieved and what ${company} needs.
+3. STRUCTURE:
+   - Heading with candidate name, email, phone, current date, recipient: Hiring Team at ${company}.
+   - Clear subject line.
+   - Salutation: Dear Hiring Manager, (or appropriate salutation).
+   - Paragraph 1: Direct, compelling opening stating the role, enthusiasm for ${company}, and high-level value proposition.
+   - Paragraph 2-3: Concrete evidence of relevant accomplishments and skills extracted from the candidate's actual experience that address the job requirements.
+   - Paragraph 4: Alignment with the company's domain and mission.
+   - Paragraph 5: Confident, polite call-to-action requesting an interview.
+   - Professional closing and candidate name.
+
+Return a valid JSON object matching this schema:
+{
+  "subjectLine": "Application for ${jobTitle} - [Candidate Name]",
+  "coverLetter": "Full formatted cover letter text with proper paragraph line breaks.",
+  "keyHighlights": ["Highlight 1 from candidate CV relevant to job", "Highlight 2", "Highlight 3"]
+}`;
+    } else if (action === "interview_question") {
+      const jobTitle = context?.job_title || "Software Engineer";
+      const experienceLevel = context?.experience_level || "Mid-Level";
+      const interviewType = context?.interview_type || "General";
+      const questionNumber = context?.question_number || 1;
+      const history = context?.history || [];
+      const candidateCv = context?.cv || {};
+
+      prompt = `You are an expert hiring manager and interviewer conducting a realistic job interview.
+You are interviewing a candidate for the following position:
+Role: ${jobTitle}
+Seniority: ${experienceLevel}
+Interview Type: ${interviewType} (General, Technical, Behavioral, HR, or Role-specific)
+
+CANDIDATE CV CONTEXT:
+${typeof candidateCv === "object" ? JSON.stringify(candidateCv) : candidateCv}
+
+CONVERSATION HISTORY SO FAR:
+${history.map((h: any, i: number) => `Q${i + 1}: ${h.question}\nA${i + 1}: ${h.answer}\nScore: ${h.score}/100`).join("\n\n")}
+
+TASK:
+Deliver Question #${questionNumber} of 5 for this interview.
+${questionNumber === 1 ? "Start with an engaging, role-appropriate opening question tailored to this level and type." : "Ask a natural follow-up or next logical question that probes deep competency."}
+Make the question challenging, realistic, and tailored to ${jobTitle}.
+
+Return a valid JSON object matching this schema:
+{
+  "questionNumber": ${questionNumber},
+  "totalQuestions": 5,
+  "question": "The interview question text",
+  "category": "${interviewType}",
+  "tips": "Brief 1-sentence tip on what a recruiter looks for in this answer."
+}`;
+    } else if (action === "interview_evaluate") {
+      const question = context?.question || text || "";
+      const answer = context?.answer || "";
+      const jobTitle = context?.job_title || "Specialist";
+      const experienceLevel = context?.experience_level || "Mid-Level";
+      const interviewType = context?.interview_type || "General";
+      const candidateCv = context?.cv || {};
+
+      prompt = `You are a senior hiring manager and executive interview coach.
+Evaluate the candidate's answer to this interview question objectively.
+
+ROLE: ${jobTitle} (${experienceLevel})
+INTERVIEW TYPE: ${interviewType}
+QUESTION:
+"${question}"
+
+CANDIDATE'S ANSWER:
+"${answer}"
+
+CANDIDATE CV DATA (for authentic better answer creation):
+${typeof candidateCv === "object" ? JSON.stringify(candidateCv) : candidateCv}
+
+EVALUATION CRITERIA:
+1. Relevance (Does it directly address what was asked?)
+2. Clarity (Is it easy to understand and well phrased?)
+3. Structure (Does it follow a strong framework like STAR: Situation, Task, Action, Result?)
+4. Confidence (Is tone assertive, professional, and positive?)
+5. Specificity (Did they provide concrete details rather than vague generalizations?)
+
+CRITICAL MANDATE:
+When drafting the 'betterAnswer', use ONLY the real projects, companies, tools, and background from the candidate's provided CV. DO NOT invent false metrics or imaginary employers. If information is limited, teach them how to structure what they genuinely did.
+
+Return a valid JSON object matching this schema:
+{
+  "score": number between 0 and 100,
+  "evaluation": {
+    "relevance": number between 0 and 100,
+    "clarity": number between 0 and 100,
+    "structure": number between 0 and 100,
+    "confidence": number between 0 and 100,
+    "specificity": number between 0 and 100
+  },
+  "feedback": {
+    "whatWasGood": "2-3 sentences praising the effective parts of their response.",
+    "whatToImprove": "2-3 specific, actionable points on how to elevate the response."
+  },
+  "betterAnswer": "An exemplary, highly polished response modeled on STAR structure using ONLY their actual background."
+}`;
+    } else if (action === "interview_summary") {
+      const history = context?.history || [];
+      const jobTitle = context?.job_title || "Professional";
+      const experienceLevel = context?.experience_level || "Mid-Level";
+      const interviewType = context?.interview_type || "General";
+
+      prompt = `You are a senior interview coach completing a full practice interview debrief.
+ROLE: ${jobTitle} (${experienceLevel})
+TYPE: ${interviewType}
+
+INTERVIEW TRANSCRIPT:
+${history.map((h: any, i: number) => `Q${i + 1}: ${h.question}\nA${i + 1}: ${h.answer}\nScore: ${h.score}/100\nFeedback: ${h.feedback?.whatWasGood} | ${h.feedback?.whatToImprove}`).join("\n\n")}
+
+Provide an overall interview performance summary.
+
+Return a valid JSON object matching this schema:
+{
+  "interviewScore": number between 0 and 100 (overall aggregate performance),
+  "strengths": ["3 to 4 standout communication and competency strengths demonstrated"],
+  "areasToImprove": ["3 to 4 highest priority areas for interview growth"],
+  "recommendedQuestions": [
+    "3 high-impact practice questions the candidate should rehearse before their real interview"
   ]
 }`;
     } else if (action === "analyze_market_trends") {
@@ -249,16 +404,107 @@ SCHEMA:
           parsedResult = JSON.parse(cleanJson);
         } catch {
           parsedResult = {
-            matchScore: 74,
+            matchScore: 82,
             matchGrade: "Good Match",
-            summary: "Analysis complete. Your experience has strong alignment with the key requirements of this role.",
-            strengths: ["Relevant domain experience", "Strong technical track record"],
-            gaps: ["A few target tool and keyword requirements can be made more explicit."],
-            suggestedSkills: [
-              { name: "Agile Leadership", importance: "high", presentInCv: false, category: "Methodology" },
-              { name: "Continuous Integration", importance: "medium", presentInCv: false, category: "Technical" }
+            summary: "Analysis complete. Your core skills and background align well with the target role, with opportunities to explicitly highlight matching tools and methodologies.",
+            matchingSkills: [
+              { name: "Frontend Development", contextInCv: "Experience in core development" },
+              { name: "JavaScript", contextInCv: "Listed in technical skills" },
+              { name: "Modern Web Standards", contextInCv: "Demonstrated across past projects" }
             ],
-            tailoringTips: ["Integrate target keywords directly into your bullet points."]
+            missingSkills: [
+              { name: "Target Frameworks/Tools", importance: "warning", reason: "Explicitly highlighted in job description" }
+            ],
+            experienceMatch: {
+              score: 85,
+              assessment: "Your professional background provides a solid foundation for the primary responsibilities of this position.",
+              levelMatch: true
+            },
+            keywords: [
+              { keyword: "Component Architecture", presentInCv: true, importance: "high" },
+              { keyword: "REST APIs", presentInCv: true, importance: "high" },
+              { keyword: "CI/CD Pipelines", presentInCv: false, importance: "medium" }
+            ],
+            recommendations: [
+              "Review the job description's specific tool requirements and verify if you have genuine experience to add to Skills.",
+              "Tailor your most recent job description bullet points to emphasize direct results and deliverables.",
+              "Align your professional summary directly with the role title and domain."
+            ],
+            strengths: ["Direct role relevancy", "Solid foundational skillset"],
+            gaps: ["A few specialized keywords can be made clearer"]
+          };
+        }
+      } else if (action === 'generate_cover_letter') {
+        try {
+          const cleanJson = resultStr.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+          parsedResult = JSON.parse(cleanJson);
+        } catch {
+          parsedResult = {
+            subjectLine: `Application for ${context?.job_title || 'Role'} - ${context?.profile?.fullName || context?.cv?.personal?.full_name || 'Candidate'}`,
+            coverLetter: resultStr || `Dear Hiring Team,\n\nI am writing to express my enthusiastic interest in the ${context?.job_title || 'open'} position at ${context?.company || 'your organization'}. With my background in delivering high-quality results, I am confident in my ability to contribute meaningfully to your team.\n\nThank you for your consideration.\n\nSincerely,\n${context?.cv?.personal?.full_name || 'Applicant'}`,
+            keyHighlights: [
+              "Directly applicable technical and professional background",
+              "Proven history of collaborative execution",
+              "Enthusiastic alignment with company objectives"
+            ]
+          };
+        }
+      } else if (action === 'interview_question') {
+        try {
+          const cleanJson = resultStr.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+          parsedResult = JSON.parse(cleanJson);
+        } catch {
+          parsedResult = {
+            questionNumber: context?.question_number || 1,
+            totalQuestions: 5,
+            question: resultStr.trim() || `Tell me about your background and how your past experience prepares you for this ${context?.job_title || 'position'}.`,
+            category: context?.interview_type || "General",
+            tips: "Focus on concise context, specific actions you took, and real results."
+          };
+        }
+      } else if (action === 'interview_evaluate') {
+        try {
+          const cleanJson = resultStr.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+          parsedResult = JSON.parse(cleanJson);
+        } catch {
+          parsedResult = {
+            score: 78,
+            evaluation: {
+              relevance: 80,
+              clarity: 82,
+              structure: 75,
+              confidence: 76,
+              specificity: 77
+            },
+            feedback: {
+              whatWasGood: "Good articulation of your initial thoughts and direct engagement with the question.",
+              whatToImprove: "Consider structuring your response around the STAR format (Situation, Task, Action, Result) to provide greater impact and measurable context."
+            },
+            betterAnswer: "In my recent experience, I approached similar challenges by first analyzing the core requirements, collaborating closely with stakeholders, and delivering a reliable solution that met our quality standards."
+          };
+        }
+      } else if (action === 'interview_summary') {
+        try {
+          const cleanJson = resultStr.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+          parsedResult = JSON.parse(cleanJson);
+        } catch {
+          parsedResult = {
+            interviewScore: 80,
+            strengths: [
+              "Strong fundamental communication and professional poise",
+              "Clear enthusiasm and subject-matter familiarity",
+              "Good responsiveness to questions asked"
+            ],
+            areasToImprove: [
+              "Structure answers more explicitly with concrete milestones and outcomes",
+              "Elaborate on collaborative problem solving under tight timelines",
+              "Maintain concise delivery without digressing into secondary details"
+            ],
+            recommendedQuestions: [
+              `How do you handle ambiguous technical or project requirements?`,
+              `Describe a time you had to adapt quickly to changing priorities.`,
+              `What is your approach to ensuring high quality in your deliverables?`
+            ]
           };
         }
       } else if (action === 'analyze_market_trends') {

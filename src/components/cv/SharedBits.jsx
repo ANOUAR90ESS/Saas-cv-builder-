@@ -90,9 +90,9 @@ export function EducationList({ items, light = false }) {
   ));
 }
 
-export function SimpleList({ items, light = false }) {
+export function SimpleList({ items, light = false, className = "" }) {
   return (
-    <p className="text-[11px]" style={{ color: light ? "rgba(255,255,255,.85)" : "#374151" }}>
+    <p className={`text-[11px] ${className}`} style={{ color: light ? "rgba(255,255,255,.85)" : "#374151" }}>
       {items.join("  •  ")}
     </p>
   );

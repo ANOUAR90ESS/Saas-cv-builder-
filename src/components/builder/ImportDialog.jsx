@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useT } from "@/lib/i18n";
-import { Linkedin, Loader2, Upload, X, Wand2 } from "lucide-react";
+import { Linkedin, Loader2, Upload, Wand2 } from "lucide-react";
 import { uploadFile } from "@/api/backend";
 import { useAiAssist } from "@/lib/aiAssist";
 import { uid } from "@/lib/cvSchema";

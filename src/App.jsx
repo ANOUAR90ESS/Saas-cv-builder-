@@ -9,10 +9,12 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
 import ScrollSaver from './components/ScrollSaver';
+import { NavigationTracker } from '@/hooks/useSmartBack';
 import Layout from '@/components/Layout';
 import PageSlide from "@/components/PageSlide";
 import { LanguageProvider } from '@/lib/i18n';
 import CookieConsent from '@/components/CookieConsent';
+import { initGlobalHaptics } from '@/lib/haptics';
 
 const Home = lazy(() => import('@/pages/Home'));
 const Builder = lazy(() => import('@/pages/Builder'));
@@ -32,6 +34,14 @@ const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Account = lazy(() => import('@/pages/Account'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const FeaturedGallery = lazy(() => import('@/pages/FeaturedGallery'));
+const CareerDashboard = lazy(() => import('@/pages/CareerDashboard'));
+const JobMatcher = lazy(() => import('@/pages/JobMatcher'));
+const CoverLetterGenerator = lazy(() => import('@/pages/CoverLetterGenerator'));
+const InterviewCoach = lazy(() => import('@/pages/InterviewCoach'));
+const ApplicationTracker = lazy(() => import('@/pages/ApplicationTracker'));
+const ProfessionalProfile = lazy(() => import('@/pages/ProfessionalProfile'));
+const PortfolioBuilder = lazy(() => import('@/pages/PortfolioBuilder'));
+const PublicProfile = lazy(() => import('@/pages/PublicProfile'));
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings } = useAuth();
@@ -76,7 +86,20 @@ const AuthenticatedApp = () => {
         <Route path="/ats-cv" element={<SeoLanding slug="ats-cv" />} />
         <Route path="/career-advice" element={<CareerAdvice />} />
         <Route path="/cover-letter-guide" element={<CoverLetterGuide />} />
+        <Route path="/dashboard" element={<CareerDashboard />} />
+        <Route path="/career" element={<CareerDashboard />} />
+        <Route path="/career/job-matcher" element={<JobMatcher />} />
+        <Route path="/career/cover-letter" element={<CoverLetterGenerator />} />
+        <Route path="/career/interview-coach" element={<InterviewCoach />} />
+        <Route path="/career/applications" element={<ApplicationTracker />} />
+        <Route path="/tracker" element={<ApplicationTracker />} />
+        <Route path="/profile/edit" element={<ProfessionalProfile />} />
+        <Route path="/career/profile" element={<ProfessionalProfile />} />
+        <Route path="/portfolio/edit" element={<PortfolioBuilder />} />
+        <Route path="/career/portfolio" element={<PortfolioBuilder />} />
       </Route>
+      <Route path="/u/:username" element={<PublicProfile />} />
+      <Route path="/u/:username/portfolio" element={<PublicProfile />} />
       <Route path="/login" element={<PageSlide><Login /></PageSlide>} />
       <Route path="/register" element={<PageSlide><Register /></PageSlide>} />
       <Route path="/signup" element={<PageSlide><Register /></PageSlide>} />
@@ -105,12 +128,16 @@ function PageLoader() {
 }
 
 function App() {
+  useEffect(() => {
+    initGlobalHaptics();
+  }, []);
 
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <LanguageProvider>
           <Router>
+            <NavigationTracker />
             <ScrollToTop />
             <ScrollSaver />
             <AuthenticatedApp />

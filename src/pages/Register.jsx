@@ -31,7 +31,7 @@ export default function Register() {
     setLoading(true);
     try {
       await register(email, password);
-      setShowOtp(true);
+      window.location.href = safeReturnTo();
     } catch (err) {
       setError(err.message || "Registration failed");
     } finally {

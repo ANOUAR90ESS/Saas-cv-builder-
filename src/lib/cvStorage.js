@@ -1,5 +1,6 @@
 // Local-first persistence. No account required to create or download a CV.
 import { createEmptyCV, createDemoCV } from "./cvSchema";
+import { syncCvToFirestore, deleteCvFromFirestore } from "./firebaseSync";
 
 const KEY = "cvforge.cvs.v1";
 const ACTIVE_KEY = "cvforge.active.v1";
@@ -53,12 +54,32 @@ export function upsertCV(cv) {
   else cvs.unshift(stamped);
   saveAllCVs(cvs);
   setActiveId(cv.id);
+
+  // Background sync to Firestore when authenticated
+  try {
+    syncCvToFirestore(stamped).catch((err) => {
+      console.warn("Firestore sync skipped or failed:", err);
+    });
+  } catch (err) {
+    console.warn("Firestore sync trigger error:", err);
+  }
+
   return stamped;
 }
 
 export function deleteCV(id) {
   const cvs = (loadAllCVs() || []).filter((c) => c.id !== id);
   saveAllCVs(cvs);
+
+  // Background delete from Firestore
+  try {
+    deleteCvFromFirestore(id).catch((err) => {
+      console.warn("Firestore delete skipped or failed:", err);
+    });
+  } catch (err) {
+    console.warn("Firestore delete trigger error:", err);
+  }
+
   return cvs;
 }
 

@@ -4,7 +4,6 @@ import {
   ExperienceList,
   EducationList,
   SimpleList,
-  SkillMeter,
   fontStack,
   fmtDate,
   SECTION_LABELS,

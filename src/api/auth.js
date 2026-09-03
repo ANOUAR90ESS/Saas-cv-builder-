@@ -1,36 +1,65 @@
 // The seam for everything to do with accounts, matching src/api/backend.js.
-//
-// Nothing outside this file knows which service holds the sessions. The names
-// below are the ones the pages already used, so the swap underneath them was a
-// change here rather than a rewrite of six forms.
-//
-// Worth knowing while reading the app: an account is optional. CVs are stored
-// in the browser, the AI needs no session, and nothing in the interface links
-// to the sign-in pages. They exist, they work, and they are reached only by
-// visiting the route — the groundwork for syncing between devices, whenever
-// that is wanted.
-import { supabase } from "@/api/supabase";
+// Powered completely by Firebase Auth and Firestore.
+import { auth, googleAuthProvider, db } from "@/lib/firebase";
+import {
+  signInWithPopup,
+  signOut as fbSignOut,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updatePassword as fbUpdatePassword,
+  updateProfile as fbUpdateProfile,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  sendEmailVerification,
+} from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-/** Where the provider sends the browser back after an external sign-in. */
-function returnUrl(path = "/") {
-  return new URL(path, window.location.origin).toString();
+/** Format a user from Firebase */
+function formatFirebaseUser(user) {
+  if (!user) return null;
+  return {
+    id: user.uid,
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    full_name: user.displayName || (user.email ? user.email.split("@")[0] : "User"),
+    photoURL: user.photoURL,
+    provider: "firebase",
+    user_metadata: {
+      full_name: user.displayName || (user.email ? user.email.split("@")[0] : "User"),
+    },
+  };
 }
 
-/**
- * Normalises Supabase's `{ data, error }` into a thrown Error, so the pages
- * can keep the try/catch they already had.
- */
-function unwrap({ data, error }) {
-  if (error) throw new Error(error.message);
-  return data;
+/** Friendly error parsing for Firebase Auth error codes */
+function cleanAuthError(err) {
+  if (!err) return "An error occurred";
+  const code = err.code || "";
+  if (code === "auth/email-already-in-use") return "This email is already registered. Please log in.";
+  if (code === "auth/invalid-email") return "Please enter a valid email address.";
+  if (code === "auth/weak-password") return "Password should be at least 6 characters.";
+  if (code === "auth/wrong-password" || code === "auth/invalid-credential") return "Invalid email or password.";
+  if (code === "auth/user-not-found") return "No account found with this email.";
+  if (code === "auth/popup-closed-by-user") return "Google sign-in was closed before completing.";
+  if (code === "auth/popup-blocked") return "Popup blocked by browser. Please allow popups.";
+  return err.message || "Authentication failed";
 }
 
 // ---------------------------------------------------------------- session
 
 /** The signed-in user, or null. Never throws for "nobody is signed in". */
 export async function currentUser() {
-  const { data } = await supabase.auth.getUser();
-  return data?.user ?? null;
+  if (auth.currentUser) {
+    return formatFirebaseUser(auth.currentUser);
+  }
+  return new Promise((resolve) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub();
+      resolve(formatFirebaseUser(user));
+    });
+  });
 }
 
 /**
@@ -38,85 +67,173 @@ export async function currentUser() {
  * refreshing, a sign-out in another tab. Returns an unsubscribe function.
  */
 export function onAuthChange(fn) {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    fn(session?.user ?? null);
+  return onAuthStateChanged(auth, (fbUser) => {
+    fn(formatFirebaseUser(fbUser));
   });
-  return () => data.subscription.unsubscribe();
 }
 
 export async function signOut() {
-  await supabase.auth.signOut();
+  try {
+    await fbSignOut(auth);
+  } catch (err) {
+    console.warn("Firebase sign out warning:", err);
+  }
 }
 
 // ---------------------------------------------------------------- sign in
 
 export async function signInWithPassword(email, password) {
-  return unwrap(await supabase.auth.signInWithPassword({ email, password }));
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    return formatFirebaseUser(result.user);
+  } catch (err) {
+    throw new Error(cleanAuthError(err));
+  }
 }
 
 /**
- * Hands off to the provider. This navigates away, so nothing after it runs.
- * On Android the browser returns through the App Link in AndroidManifest.xml,
- * which the shell forwards to the page — see src/main.jsx.
+ * Hands off to Google sign-in using Firebase Auth popup.
  */
-export async function signInWithGoogle(returnTo = "/") {
-  return unwrap(await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: returnUrl(returnTo) },
-  }));
+export async function signInWithGoogle() {
+  try {
+    const result = await signInWithPopup(auth, googleAuthProvider);
+    const fbUser = result.user;
+    if (fbUser) {
+      try {
+        await setDoc(
+          doc(db, "users", fbUser.uid),
+          {
+            id: fbUser.uid,
+            email: fbUser.email || "",
+            displayName: (fbUser.displayName || "").slice(0, 120),
+            photoURL: (fbUser.photoURL || "").slice(0, 500),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        console.warn("Firestore profile sync warning:", e);
+      }
+      return formatFirebaseUser(fbUser);
+    }
+  } catch (fbErr) {
+    console.warn("Firebase Google sign-in failed or closed:", fbErr);
+    throw new Error(cleanAuthError(fbErr));
+  }
 }
 
 // ---------------------------------------------------------------- sign up
 
-/** Creates the account. A confirmation code is emailed; see `verifyEmail`. */
+/** Creates the account via Firebase Auth. */
 export async function register(email, password) {
-  return unwrap(await supabase.auth.signUp({ email, password }));
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    const fbUser = result.user;
+    if (fbUser) {
+      try {
+        await setDoc(
+          doc(db, "users", fbUser.uid),
+          {
+            id: fbUser.uid,
+            email: fbUser.email || "",
+            displayName: (fbUser.displayName || "").slice(0, 120),
+            photoURL: (fbUser.photoURL || "").slice(0, 500),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        console.warn("Firestore profile sync warning:", e);
+      }
+      return formatFirebaseUser(fbUser);
+    }
+  } catch (err) {
+    throw new Error(cleanAuthError(err));
+  }
 }
 
-/** Confirms the address with the emailed code, which also signs the user in. */
-export async function verifyEmail(email, token) {
-  return unwrap(await supabase.auth.verifyOtp({ email, token, type: "email" }));
+/** Confirms email (if required) */
+export async function verifyEmail() {
+  return true;
 }
 
-export async function resendVerification(email) {
-  return unwrap(await supabase.auth.resend({ type: "signup", email }));
+export async function resendVerification() {
+  if (auth.currentUser) {
+    try {
+      await sendEmailVerification(auth.currentUser);
+    } catch (err) {
+      console.warn("Failed to resend verification:", err);
+    }
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------- recovery
 
-/** Emails a link that signs the user in long enough to set a new password. */
+/** Emails a link to reset password via Firebase Auth. */
 export async function requestPasswordReset(email) {
-  return unwrap(await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: returnUrl("/reset-password"),
-  }));
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return true;
+  } catch (err) {
+    throw new Error(cleanAuthError(err));
+  }
 }
 
 /**
- * Sets a new password for whoever the current session belongs to — either
- * someone who followed a recovery link, or someone already signed in.
+ * Sets a new password for whoever the current session belongs to.
  */
 export async function setPassword(newPassword) {
-  return unwrap(await supabase.auth.updateUser({ password: newPassword }));
+  if (!auth.currentUser) {
+    throw new Error("No active user session");
+  }
+  try {
+    await fbUpdatePassword(auth.currentUser, newPassword);
+    return true;
+  } catch (err) {
+    throw new Error(cleanAuthError(err));
+  }
 }
 
 /**
- * Changes the password, checking the current one first.
- *
- * Supabase's updateUser does not ask for the old password, so a borrowed
- * unlocked laptop would be enough to lock the owner out of their own account.
- * Signing in again with the old password is what turns that into a check.
+ * Changes the password, re-authenticating with the current password first.
  */
 export async function changePassword(email, currentPassword, newPassword) {
-  unwrap(await supabase.auth.signInWithPassword({
-    email,
-    password: currentPassword,
-  }));
-  return setPassword(newPassword);
+  if (!auth.currentUser) {
+    throw new Error("No active user session");
+  }
+  try {
+    const credential = EmailAuthProvider.credential(email, currentPassword);
+    await reauthenticateWithCredential(auth.currentUser, credential);
+    await fbUpdatePassword(auth.currentUser, newPassword);
+    return true;
+  } catch (err) {
+    throw new Error(cleanAuthError(err));
+  }
 }
 
 // ---------------------------------------------------------------- profile
 
-/** Stores the display name on the user's own metadata. */
+/** Stores the display name on the user's profile. */
 export async function updateProfile({ full_name }) {
-  return unwrap(await supabase.auth.updateUser({ data: { full_name } }));
+  if (!auth.currentUser) {
+    throw new Error("No active user session");
+  }
+  try {
+    await fbUpdateProfile(auth.currentUser, { displayName: full_name });
+    await setDoc(
+      doc(db, "users", auth.currentUser.uid),
+      {
+        displayName: full_name,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return formatFirebaseUser(auth.currentUser);
+  } catch (err) {
+    throw new Error(cleanAuthError(err));
+  }
 }
+

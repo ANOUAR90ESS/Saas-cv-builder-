@@ -1,5 +1,5 @@
 import React from "react";
-import { ContactLine, ExperienceList, EducationList, SimpleList, fontStack, fmtDate, SECTION_LABELS } from "@/components/cv/SharedBits";
+import { ContactLine, ExperienceList, EducationList, SimpleList, fmtDate, SECTION_LABELS } from "@/components/cv/SharedBits";
 import { renderExtraSection } from "@/components/cv/ExtraSections";
 
 // ATS-friendly: plain single column, no colors, no columns, simple headings.

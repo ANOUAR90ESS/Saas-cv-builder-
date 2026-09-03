@@ -1,5 +1,5 @@
 import React from "react";
-import { ContactLine, SectionTitle, ExperienceList, EducationList, SimpleList, fontStack, dateRange, fmtDate, SkillMeter, SECTION_LABELS } from "@/components/cv/SharedBits";
+import { SectionTitle, ExperienceList, EducationList, SimpleList, fontStack, fmtDate, SkillMeter, SECTION_LABELS } from "@/components/cv/SharedBits";
 
 export default function Modern({ cv }) {
   const color = cv.theme?.primary_color || "#4f46e5";

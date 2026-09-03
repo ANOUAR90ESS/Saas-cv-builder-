@@ -1,5 +1,5 @@
 import React from "react";
-import { fmtDate, SECTION_LABELS } from "@/components/cv/SharedBits";
+import { fmtDate } from "@/components/cv/SharedBits";
 
 // Shared renderers for the "extra" CV sections (awards, courses, volunteer, references,
 // projects) so every template displays them. `title` is a (key) => ReactNode factory that
