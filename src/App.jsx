@@ -5,6 +5,16 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
+// The landing route is NOT lazy, and that is deliberate. Every other route is:
+// they are only reachable after the app is running, so their chunks cost
+// nothing up front. The landing page is different — it is where almost every
+// visit starts, and as a lazy import the browser could not even ask for it
+// until the entry chunk had downloaded and executed. That second round trip
+// measured ~370 ms on a throttled mobile profile with the network idle
+// throughout. Preloading it via <link rel="modulepreload"> was tried instead
+// and was worse on both counts (2462 ms ready, first paint pushed 572→748 ms),
+// because ten parallel preloads starve the render-blocking stylesheet.
+import Home from '@/pages/Home';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
@@ -16,7 +26,6 @@ import { LanguageProvider } from '@/lib/i18n';
 import CookieConsent from '@/components/CookieConsent';
 import { initGlobalHaptics } from '@/lib/haptics';
 
-const Home = lazy(() => import('@/pages/Home'));
 const Builder = lazy(() => import('@/pages/Builder'));
 const Templates = lazy(() => import('@/pages/Templates'));
 const CVExamples = lazy(() => import('@/pages/CVExamples'));
