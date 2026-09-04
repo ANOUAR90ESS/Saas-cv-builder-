@@ -1,6 +1,6 @@
 // The seam for everything to do with accounts, matching src/api/backend.js.
 // Powered completely by Firebase Auth and Firestore.
-import { auth, googleAuthProvider, db } from "@/lib/firebase";
+import { auth, googleAuthProvider, db, isFirebaseConfigured } from "@/lib/firebase";
 import {
   signInWithPopup,
   signOut as fbSignOut,
@@ -51,6 +51,7 @@ function cleanAuthError(err) {
 
 /** The signed-in user, or null. Never throws for "nobody is signed in". */
 export async function currentUser() {
+  if (!isFirebaseConfigured) return null;
   if (auth.currentUser) {
     return formatFirebaseUser(auth.currentUser);
   }
@@ -67,12 +68,17 @@ export async function currentUser() {
  * refreshing, a sign-out in another tab. Returns an unsubscribe function.
  */
 export function onAuthChange(fn) {
+  if (!isFirebaseConfigured) {
+    fn(null);
+    return () => {};
+  }
   return onAuthStateChanged(auth, (fbUser) => {
     fn(formatFirebaseUser(fbUser));
   });
 }
 
 export async function signOut() {
+  if (!isFirebaseConfigured) return;
   try {
     await fbSignOut(auth);
   } catch (err) {
@@ -83,6 +89,9 @@ export async function signOut() {
 // ---------------------------------------------------------------- sign in
 
 export async function signInWithPassword(email, password) {
+  if (!isFirebaseConfigured) {
+    throw new Error("Accounts are not configured in this environment.");
+  }
   try {
     const result = await signInWithEmailAndPassword(auth, email, password);
     return formatFirebaseUser(result.user);
@@ -95,6 +104,9 @@ export async function signInWithPassword(email, password) {
  * Hands off to Google sign-in using Firebase Auth popup.
  */
 export async function signInWithGoogle() {
+  if (!isFirebaseConfigured) {
+    throw new Error("Accounts are not configured in this environment.");
+  }
   try {
     const result = await signInWithPopup(auth, googleAuthProvider);
     const fbUser = result.user;
@@ -127,6 +139,9 @@ export async function signInWithGoogle() {
 
 /** Creates the account via Firebase Auth. */
 export async function register(email, password) {
+  if (!isFirebaseConfigured) {
+    throw new Error("Accounts are not configured in this environment.");
+  }
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     const fbUser = result.user;
@@ -174,6 +189,9 @@ export async function resendVerification() {
 
 /** Emails a link to reset password via Firebase Auth. */
 export async function requestPasswordReset(email) {
+  if (!isFirebaseConfigured) {
+    throw new Error("Accounts are not configured in this environment.");
+  }
   try {
     await sendPasswordResetEmail(auth, email);
     return true;
