@@ -1,15 +1,4 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  deleteDoc,
-  query,
-  where,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { getDb, auth, handleFirestoreError, OperationType } from './firebase';
+import { getFirestoreApi, auth, handleFirestoreError, OperationType } from './firebase';
 
 export interface CloudCV {
   id: string;
@@ -33,14 +22,14 @@ export async function syncCvToFirestore(cv: { id: string; title?: string; [key: 
   const currentUser = auth.currentUser;
   if (!currentUser) return;
 
-  const db = await getDb();
+  const { db, fs } = await getFirestoreApi();
   const docId = sanitizeDocId(cv.id);
-  const docRef = doc(db, 'cvs', docId);
+  const docRef = fs.doc(db, 'cvs', docId);
   const path = `cvs/${docId}`;
 
   let existingData: Record<string, unknown> | null = null;
   try {
-    const existingSnap = await getDoc(docRef);
+    const existingSnap = await fs.getDoc(docRef);
     if (existingSnap.exists()) {
       existingData = existingSnap.data();
     }
@@ -51,26 +40,26 @@ export async function syncCvToFirestore(cv: { id: string; title?: string; [key: 
 
   try {
     if (existingData) {
-      await setDoc(
+      await fs.setDoc(
         docRef,
         {
           id: docId,
           userId: currentUser.uid,
           title: (cv.title || 'Untitled CV').slice(0, 150),
           data: cv,
-          createdAt: existingData.createdAt || serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          createdAt: existingData.createdAt || fs.serverTimestamp(),
+          updatedAt: fs.serverTimestamp(),
         },
         { merge: true }
       );
     } else {
-      await setDoc(docRef, {
+      await fs.setDoc(docRef, {
         id: docId,
         userId: currentUser.uid,
         title: (cv.title || 'Untitled CV').slice(0, 150),
         data: cv,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: fs.serverTimestamp(),
+        updatedAt: fs.serverTimestamp(),
       });
     }
   } catch (error) {
@@ -85,11 +74,11 @@ export async function fetchUserCvsFromFirestore(): Promise<any[]> {
   const currentUser = auth.currentUser;
   if (!currentUser) return [];
 
-  const db = await getDb();
+  const { db, fs } = await getFirestoreApi();
   const path = 'cvs';
   try {
-    const q = query(collection(db, 'cvs'), where('userId', '==', currentUser.uid));
-    const snapshot = await getDocs(q);
+    const q = fs.query(fs.collection(db, 'cvs'), fs.where('userId', '==', currentUser.uid));
+    const snapshot = await fs.getDocs(q);
     return snapshot.docs.map((docSnap) => {
       const cloudData = docSnap.data();
       return cloudData.data || cloudData;
@@ -106,11 +95,11 @@ export async function deleteCvFromFirestore(cvId: string): Promise<void> {
   const currentUser = auth.currentUser;
   if (!currentUser) return;
 
-  const db = await getDb();
+  const { db, fs } = await getFirestoreApi();
   const docId = sanitizeDocId(cvId);
   const path = `cvs/${docId}`;
   try {
-    await deleteDoc(doc(db, 'cvs', docId));
+    await fs.deleteDoc(fs.doc(db, 'cvs', docId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }

@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
@@ -96,4 +97,21 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
+}
+
+/**
+ * Firestore plus the module's own functions, both loaded on demand.
+ *
+ * getDb() alone was not enough: a caller still needed `doc`, `setDoc` and the
+ * rest, and importing those at the top of a module pulls the whole SDK into
+ * that module's chunk. That is how 167 kB of Firestore ended up loading on the
+ * builder page for visitors who were not even signed in. Callers take both
+ * from here, inside the function that needs them and after the signed-in
+ * check, so a signed-out visitor never fetches any of it.
+ */
+export function getFirestoreApi(): Promise<{
+  db: Firestore;
+  fs: typeof import('firebase/firestore');
+}> {
+  return Promise.all([getDb(), import('firebase/firestore')]).then(([db, fs]) => ({ db, fs }));
 }

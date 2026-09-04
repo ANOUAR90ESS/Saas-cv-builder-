@@ -34,8 +34,12 @@ import ImportDialog from "@/components/builder/ImportDialog";
 import WelcomeGuide from "@/components/builder/WelcomeGuide";
 import CVScore from "@/components/builder/CVScore";
 import { Capacitor } from "@capacitor/core";
-import { exportPDF, exportPDFNative } from "@/lib/pdfExport";
-import { exportDocx, exportDocxNative } from "@/lib/docxExport";
+// jsPDF, html2canvas and docx are imported inside the export handlers, not
+// here. Together they are the heaviest thing this page can reach, and none of
+// them is touched until someone asks for a file — as static imports they were
+// downloaded and parsed by everyone who merely opened the builder. Both
+// handlers below are already async and already show a notice while they work,
+// so the fetch hides behind UI that was there anyway.
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 import { TemplateLibraryDrawer } from "@/components/template-library";
@@ -175,6 +179,7 @@ export default function Builder() {
     setExportingPdf(true);
     setExportNotice("Preparing PDF with jsPDF...");
     try {
+      const { exportPDF, exportPDFNative } = await import("@/lib/pdfExport");
       if (native) {
         await exportPDFNative(cv);
       } else {
@@ -196,6 +201,7 @@ export default function Builder() {
     setExportingDocx(true);
     setExportNotice("Generating DOCX document...");
     try {
+      const { exportDocx, exportDocxNative } = await import("@/lib/docxExport");
       if (native) {
         await exportDocxNative(cv);
       } else {

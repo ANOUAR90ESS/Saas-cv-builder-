@@ -5,8 +5,8 @@ import { createEmptyCV } from "@/lib/cvSchema";
 import { useLang } from "@/lib/i18n";
 import { getTemplate } from "@/lib/templates/registry";
 import { loadAllCVs, upsertCV, deleteCV, duplicateCV } from "@/lib/cvStorage";
-import { exportPDF } from "@/lib/pdfExport";
-import { exportDocx } from "@/lib/docxExport";
+// Loaded when a download is asked for, not when the list is opened — see the
+// note in Builder.jsx.
 import MiniCVPreview from "@/components/cv/MiniCVPreview";
 import PullToRefresh from "@/components/PullToRefresh";
 import SheetSelect from "@/components/builder/SheetSelect";
@@ -72,9 +72,18 @@ export default function Projects() {
     refresh();
   };
 
-  const download = (cv, format) => {
-    if (format === "docx") exportDocx(cv).catch((e) => console.error("DOCX export failed", e));
-    else exportPDF(cv);
+  const download = async (cv, format) => {
+    try {
+      if (format === "docx") {
+        const { exportDocx } = await import("@/lib/docxExport");
+        await exportDocx(cv);
+      } else {
+        const { exportPDF } = await import("@/lib/pdfExport");
+        await exportPDF(cv);
+      }
+    } catch (e) {
+      console.error(`${format === "docx" ? "DOCX" : "PDF"} export failed`, e);
+    }
   };
 
   const allTags = useMemo(() => {

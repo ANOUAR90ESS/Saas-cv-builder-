@@ -23,7 +23,6 @@ import {
   getCareerProfile
 } from "@/lib/careerStorage";
 import { triggerHaptic } from "@/lib/haptics";
-import jsPDF from "jspdf";
 
 export default function CoverLetterGenerator() {
   const location = useLocation();
@@ -123,8 +122,10 @@ export default function CoverLetterGenerator() {
     triggerHaptic("selection");
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     try {
+      // jsPDF is ~380 kB and only needed once someone downloads.
+      const { default: jsPDF } = await import("jspdf");
       const doc = new jsPDF({
         orientation: "portrait",
         unit: "pt",

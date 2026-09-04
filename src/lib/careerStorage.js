@@ -2,8 +2,7 @@
 // Works seamlessly without an account, with optional Firestore synchronization.
 
 import { loadAllCVs, getActiveId } from "./cvStorage";
-import { getDb, auth } from "./firebase";
-import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestoreApi, auth } from "./firebase";
 
 const APPS_KEY = "dexacv.applications.v1";
 const MATCHES_KEY = "dexacv.matches.v1";
@@ -638,9 +637,9 @@ async function syncCareerProfileToFirestore(profile) {
   const user = auth.currentUser;
   if (!user) return;
   try {
-    const db = await getDb();
-    const docRef = doc(db, "career_profiles", user.uid);
-    await setDoc(
+    const { db, fs } = await getFirestoreApi();
+    const docRef = fs.doc(db, "career_profiles", user.uid);
+    await fs.setDoc(
       docRef,
       {
         id: user.uid,
@@ -648,8 +647,8 @@ async function syncCareerProfileToFirestore(profile) {
         username: profile.username,
         isPublished: Boolean(profile.isPublished),
         data: profile,
-        updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
+        updatedAt: fs.serverTimestamp(),
+        createdAt: fs.serverTimestamp()
       },
       { merge: true }
     );
@@ -662,10 +661,10 @@ async function syncApplicationToFirestore(app) {
   const user = auth.currentUser;
   if (!user) return;
   try {
-    const db = await getDb();
+    const { db, fs } = await getFirestoreApi();
     const cleanId = (app.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
-    const docRef = doc(db, "job_applications", cleanId);
-    await setDoc(
+    const docRef = fs.doc(db, "job_applications", cleanId);
+    await fs.setDoc(
       docRef,
       {
         id: cleanId,
@@ -674,8 +673,8 @@ async function syncApplicationToFirestore(app) {
         jobTitle: app.jobTitle,
         status: app.status,
         data: app,
-        updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
+        updatedAt: fs.serverTimestamp(),
+        createdAt: fs.serverTimestamp()
       },
       { merge: true }
     );
@@ -688,9 +687,9 @@ async function deleteApplicationFromFirestore(id) {
   const user = auth.currentUser;
   if (!user) return;
   try {
-    const db = await getDb();
+    const { db, fs } = await getFirestoreApi();
     const cleanId = (id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
-    await deleteDoc(doc(db, "job_applications", cleanId));
+    await fs.deleteDoc(fs.doc(db, "job_applications", cleanId));
   } catch (err) {
     console.warn("Firestore delete application error:", err);
   }
@@ -700,10 +699,10 @@ async function syncCoverLetterToFirestore(letter) {
   const user = auth.currentUser;
   if (!user) return;
   try {
-    const db = await getDb();
+    const { db, fs } = await getFirestoreApi();
     const cleanId = (letter.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
-    const docRef = doc(db, "cover_letters", cleanId);
-    await setDoc(
+    const docRef = fs.doc(db, "cover_letters", cleanId);
+    await fs.setDoc(
       docRef,
       {
         id: cleanId,
@@ -711,8 +710,8 @@ async function syncCoverLetterToFirestore(letter) {
         jobTitle: letter.jobTitle,
         company: letter.company,
         data: letter,
-        updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
+        updatedAt: fs.serverTimestamp(),
+        createdAt: fs.serverTimestamp()
       },
       { merge: true }
     );
@@ -725,9 +724,9 @@ async function deleteCoverLetterFromFirestore(id) {
   const user = auth.currentUser;
   if (!user) return;
   try {
-    const db = await getDb();
+    const { db, fs } = await getFirestoreApi();
     const cleanId = (id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
-    await deleteDoc(doc(db, "cover_letters", cleanId));
+    await fs.deleteDoc(fs.doc(db, "cover_letters", cleanId));
   } catch (err) {
     console.warn("Firestore delete cover letter error:", err);
   }
@@ -737,10 +736,10 @@ async function syncInterviewSessionToFirestore(session) {
   const user = auth.currentUser;
   if (!user) return;
   try {
-    const db = await getDb();
+    const { db, fs } = await getFirestoreApi();
     const cleanId = (session.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
-    const docRef = doc(db, "interview_sessions", cleanId);
-    await setDoc(
+    const docRef = fs.doc(db, "interview_sessions", cleanId);
+    await fs.setDoc(
       docRef,
       {
         id: cleanId,
@@ -748,8 +747,8 @@ async function syncInterviewSessionToFirestore(session) {
         jobTitle: session.jobTitle,
         score: session.score,
         data: session,
-        updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
+        updatedAt: fs.serverTimestamp(),
+        createdAt: fs.serverTimestamp()
       },
       { merge: true }
     );

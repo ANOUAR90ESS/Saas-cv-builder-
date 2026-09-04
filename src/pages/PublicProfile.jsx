@@ -19,8 +19,7 @@ import {
   getCareerProfile,
   getPortfolioProjects
 } from "@/lib/careerStorage";
-import { getDb } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { getFirestoreApi } from "@/lib/firebase";
 
 export default function PublicProfile() {
   const { username } = useParams();
@@ -49,12 +48,12 @@ export default function PublicProfile() {
 
       // 2. Query Firestore for public profile
       try {
-        const db = await getDb();
-        const q = query(
-          collection(db, "career_profiles"),
-          where("username", "==", cleanUsername)
+        const { db, fs } = await getFirestoreApi();
+        const q = fs.query(
+          fs.collection(db, "career_profiles"),
+          fs.where("username", "==", cleanUsername)
         );
-        const snapshot = await getDocs(q);
+        const snapshot = await fs.getDocs(q);
         if (!snapshot.empty) {
           const docData = snapshot.docs[0].data();
           const pData = docData.data || docData;
