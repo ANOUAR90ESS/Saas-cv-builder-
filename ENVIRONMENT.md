@@ -79,6 +79,32 @@ not a secret; it is listed separately only because the server reads it from a
 different place. `GEMINI_API_KEY` **is** a secret and must never be given a
 `VITE_` name.
 
+### Guards on the AI routes
+
+`/api/functions/ai-assist` and `/api/functions/import-profile` have no sign-in
+in front of them, deliberately: the app is usable without an account. They do
+spend money on every call, so `src/middleware/aiGuard.ts` bounds that. Every
+variable is optional.
+
+| Name | Default | What it does |
+|---|---|---|
+| `ALLOWED_ORIGINS` | unset | Comma-separated origins that may call `/api/functions` from a browser. Requests from the origin the app is served on are **always** allowed, so this is only for other origins. Unset refuses none, and the server warns at startup. |
+| `AI_RATE_LIMIT` | `30` | Calls per address per window. |
+| `AI_RATE_WINDOW_MINUTES` | `10` | Length of that window. |
+| `AI_MAX_BODY_KB` | `64` | Largest accepted body; cost scales with input length. |
+| `TRUST_PROXY` | unset | Set behind a proxy that adds `X-Forwarded-For`. Without it `req.ip` is the proxy, every visitor shares one bucket, and one busy user rate-limits the rest. |
+
+Be honest about what this buys. The origin check is real protection against
+another site putting these endpoints behind its own UI, because the browser
+sets `Origin` and a page cannot forge it — and no protection at all against a
+script, which sets whatever headers it likes. The rate limit is the volume
+defence, and it counts in the server's memory: behind more than one instance
+the effective limit is per instance, and a restart clears the counters. It
+bounds accidental and casual abuse, not a determined attacker with many
+addresses. `supabase/migrations/20260902120000_rate_limits.sql` holds a
+Postgres-backed version of the same idea, written for the old edge functions
+and not wired to anything.
+
 ---
 
 ## 2. Edge function secrets — `supabase secrets set`

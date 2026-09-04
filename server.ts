@@ -3,6 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
+import { aiGuard, aiCors } from './src/middleware/aiGuard.ts';
 import { getOrCreateUser } from './src/db/users.ts';
 import { getUserCvs, saveCv } from './src/db/cvs.ts';
 
@@ -10,7 +11,23 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  // Behind a proxy (Vercel, a load balancer, Cloudflare) req.ip is the
+  // proxy's address unless Express is told to read X-Forwarded-For. The rate
+  // limiter keys on req.ip, so without this every visitor shares one bucket
+  // and the first few would lock out everyone else.
+  if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY);
+
+  // A body limit belongs here rather than only in the guard: the guard reads
+  // Content-Length, which a caller controls, and this is what actually stops
+  // the read.
+  app.use(express.json({ limit: process.env.MAX_BODY_KB || '256kb' }));
+
+  // Every /api/functions route is unauthenticated by design. aiCors answers
+  // preflight and echoes an allowed origin; aiGuard applies the origin,
+  // size and rate checks. Order matters: CORS headers must be set even on a
+  // response the guard refuses, or the browser reports a CORS failure and the
+  // real 429 never reaches the user.
+  app.use('/api/functions', aiCors, aiGuard);
 
   // Set up AI
   let ai = null;
