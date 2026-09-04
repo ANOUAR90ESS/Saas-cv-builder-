@@ -1,6 +1,7 @@
 #env
 .env
 .env.*
+!.env.example
 
 # Logs
 /logs
@@ -49,4 +50,6 @@ keystore.properties
 # Deno resolves npm packages here when the functions are type-checked or served
 # locally; it is a cache, not source.
 supabase/functions/node_modules/
+# Legacy Firebase web config. Superseded by VITE_FIREBASE_* in .env.local;
+# still ignored so an existing local copy is never committed.
 firebase-applet-config.json
