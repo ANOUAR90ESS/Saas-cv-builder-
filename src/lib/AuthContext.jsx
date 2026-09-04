@@ -60,8 +60,14 @@ export const AuthProvider = ({ children }) => {
     setIsLoadingAuth(false);
   };
 
-  const checkUserAuth = async () => {
-    setIsLoadingAuth(true);
+  // `silent` is the whole point of the split. The mount path must not raise
+  // the loading flag: it starts false for a visitor with no session to check,
+  // and setting it true here would put back the full-screen gate this provider
+  // exists to avoid, making every visitor wait on the auth chunk again. An
+  // explicit refresh from a component is not silent — there the caller does
+  // want the spinner.
+  const loadUser = async (silent) => {
+    if (!silent) setIsLoadingAuth(true);
     try {
       const { currentUser } = await authModule();
       applyUser(await currentUser());
@@ -75,11 +81,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const checkUserAuth = () => loadUser(false);
+
   useEffect(() => {
     let unsubscribe = null;
     let cancelled = false;
 
-    checkUserAuth();
+    // Silent: the mount path must not raise the loading flag. Deferring this
+    // to requestIdleCallback was tried and measured slightly worse, so the
+    // import simply starts here, in parallel with the first route.
+    loadUser(true);
 
     // Keeps this tab in step with a sign-in finishing, a token refreshing, or
     // a sign-out in another tab.
