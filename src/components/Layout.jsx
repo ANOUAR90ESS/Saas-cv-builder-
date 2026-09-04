@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, NavLink, useNavigate, useOutlet, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { Home, LayoutTemplate, FolderOpen, User, LogIn, Compass } from "lucide-react";
 import Logo, { LogoMark } from "@/components/Logo";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -131,7 +131,7 @@ function AnimatedOutlet() {
   const outlet = useOutlet();
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <motion.div
+      <m.div
         key={location.pathname}
         initial={{ opacity: 0, x: 24 }}
         animate={{ opacity: 1, x: 0 }}
@@ -139,7 +139,7 @@ function AnimatedOutlet() {
         transition={{ duration: 0.22, ease: "easeOut" }}
       >
         {outlet}
-      </motion.div>
+      </m.div>
     </AnimatePresence>
   );
 }

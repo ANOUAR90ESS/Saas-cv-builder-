@@ -1,3 +1,4 @@
+import { LazyMotion } from "framer-motion";
 import { Toaster } from "@/components/ui/toaster"
 import { useEffect } from 'react'
 import { dismissBootScreen } from '@/lib/bootScreen'
@@ -73,56 +74,72 @@ const AuthenticatedApp = () => {
   // so it mounts only once the lazy route chunk has resolved — that is the
   // moment there is real content behind the boot screen to reveal.
   return (
-    <Suspense fallback={<PageLoader />}>
-      <BootScreenDismisser />
-      <Routes>
-        <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/templates" element={<Templates />} />
-        <Route path="/cv-examples" element={<CVExamples />} />
-        <Route path="/guides" element={<Guides />} />
-        <Route path="/guides/:slug" element={<Guides />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/account" element={<Account />} />
-        <Route path="/user" element={<Account />} />
-        <Route path="/profile" element={<Account />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/featured-templates" element={<FeaturedGallery />} />
-        <Route path="/cv-maker" element={<SeoLanding slug="cv-maker" />} />
-        <Route path="/resume-builder" element={<SeoLanding slug="resume-builder" />} />
-        <Route path="/cv-maker-free" element={<SeoLanding slug="cv-maker-free" />} />
-        <Route path="/resume-builder-free" element={<SeoLanding slug="resume-builder-free" />} />
-        <Route path="/cv-without-experience" element={<SeoLanding slug="cv-without-experience" />} />
-        <Route path="/student-cv" element={<SeoLanding slug="student-cv" />} />
-        <Route path="/professional-cv" element={<SeoLanding slug="professional-cv" />} />
-        <Route path="/ats-cv" element={<SeoLanding slug="ats-cv" />} />
-        <Route path="/career-advice" element={<CareerAdvice />} />
-        <Route path="/cover-letter-guide" element={<CoverLetterGuide />} />
-        <Route path="/dashboard" element={<CareerDashboard />} />
-        <Route path="/career" element={<CareerDashboard />} />
-        <Route path="/career/job-matcher" element={<JobMatcher />} />
-        <Route path="/career/cover-letter" element={<CoverLetterGenerator />} />
-        <Route path="/career/interview-coach" element={<InterviewCoach />} />
-        <Route path="/career/applications" element={<ApplicationTracker />} />
-        <Route path="/tracker" element={<ApplicationTracker />} />
-        <Route path="/profile/edit" element={<ProfessionalProfile />} />
-        <Route path="/career/profile" element={<ProfessionalProfile />} />
-        <Route path="/portfolio/edit" element={<PortfolioBuilder />} />
-        <Route path="/career/portfolio" element={<PortfolioBuilder />} />
-      </Route>
-      <Route path="/u/:username" element={<PublicProfile />} />
-      <Route path="/u/:username/portfolio" element={<PublicProfile />} />
-      <Route path="/login" element={<PageSlide><Login /></PageSlide>} />
-      <Route path="/register" element={<PageSlide><Register /></PageSlide>} />
-      <Route path="/signup" element={<PageSlide><Register /></PageSlide>} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/builder" element={<PageSlide><Builder /></PageSlide>} />
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
-    </Suspense>
+    // `m` plus LazyMotion rather than `motion`. The full motion component
+    // bundles every feature framer has -- drag, layout projection, gestures --
+    // and this app animates opacity and x on exactly two components.
+    // domAnimation is the subset that covers that, so nothing looks different.
+    //
+    // The features are loaded as a function, not imported, which keeps them
+    // out of the entry chunk entirely: 182 -> 151 kB gzip across both changes.
+    // The cost is that a navigation in the first moments after load can land
+    // before the features do and arrive unanimated; the page is correct
+    // either way, and it is one frame of polish against a third of the
+    // bundle.
+    //
+    // `strict` makes a stray `motion.*` throw instead of quietly pulling the
+    // whole library back in.
+    <LazyMotion features={() => import("framer-motion").then((mod) => mod.domAnimation)} strict>
+      <Suspense fallback={<PageLoader />}>
+        <BootScreenDismisser />
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/templates" element={<Templates />} />
+            <Route path="/cv-examples" element={<CVExamples />} />
+            <Route path="/guides" element={<Guides />} />
+            <Route path="/guides/:slug" element={<Guides />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/account" element={<Account />} />
+            <Route path="/user" element={<Account />} />
+            <Route path="/profile" element={<Account />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/featured-templates" element={<FeaturedGallery />} />
+            <Route path="/cv-maker" element={<SeoLanding slug="cv-maker" />} />
+            <Route path="/resume-builder" element={<SeoLanding slug="resume-builder" />} />
+            <Route path="/cv-maker-free" element={<SeoLanding slug="cv-maker-free" />} />
+            <Route path="/resume-builder-free" element={<SeoLanding slug="resume-builder-free" />} />
+            <Route path="/cv-without-experience" element={<SeoLanding slug="cv-without-experience" />} />
+            <Route path="/student-cv" element={<SeoLanding slug="student-cv" />} />
+            <Route path="/professional-cv" element={<SeoLanding slug="professional-cv" />} />
+            <Route path="/ats-cv" element={<SeoLanding slug="ats-cv" />} />
+            <Route path="/career-advice" element={<CareerAdvice />} />
+            <Route path="/cover-letter-guide" element={<CoverLetterGuide />} />
+            <Route path="/dashboard" element={<CareerDashboard />} />
+            <Route path="/career" element={<CareerDashboard />} />
+            <Route path="/career/job-matcher" element={<JobMatcher />} />
+            <Route path="/career/cover-letter" element={<CoverLetterGenerator />} />
+            <Route path="/career/interview-coach" element={<InterviewCoach />} />
+            <Route path="/career/applications" element={<ApplicationTracker />} />
+            <Route path="/tracker" element={<ApplicationTracker />} />
+            <Route path="/profile/edit" element={<ProfessionalProfile />} />
+            <Route path="/career/profile" element={<ProfessionalProfile />} />
+            <Route path="/portfolio/edit" element={<PortfolioBuilder />} />
+            <Route path="/career/portfolio" element={<PortfolioBuilder />} />
+          </Route>
+          <Route path="/u/:username" element={<PublicProfile />} />
+          <Route path="/u/:username/portfolio" element={<PublicProfile />} />
+          <Route path="/login" element={<PageSlide><Login /></PageSlide>} />
+          <Route path="/register" element={<PageSlide><Register /></PageSlide>} />
+          <Route path="/signup" element={<PageSlide><Register /></PageSlide>} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/builder" element={<PageSlide><Builder /></PageSlide>} />
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </Suspense>
+    </LazyMotion>
   );
 };
 
