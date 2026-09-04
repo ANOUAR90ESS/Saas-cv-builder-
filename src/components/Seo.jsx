@@ -5,8 +5,9 @@ import { useEffect } from "react";
 // domains to search engines.
 const SITE_URL = "https://dexacv.com";
 const SITE_NAME = "DexaCV";
-// Default Open Graph share image; set once the OG banner URL is known.
-const DEFAULT_OG_IMAGE = "https://media.base44.com/images/public/6a8a351cc082996c84425f54/dd31ad50d_generated_image.png";
+// Default Open Graph share image. Served from this site's own /public so the
+// share card never depends on a third-party CDN staying up.
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 
 // Lightweight per-page SEO: title, meta description, canonical link,
 // Open Graph + Twitter Card tags, an optional robots noindex flag, and

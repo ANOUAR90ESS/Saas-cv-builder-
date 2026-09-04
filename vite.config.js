@@ -3,9 +3,9 @@ import { fileURLToPath } from "node:url"
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// The `@/` alias used to come from the Base44 Vite plugin. It is declared here
-// now, matching the `paths` entry in jsconfig.json that the editor reads —
-// keep the two in step, or imports resolve for one and not the other.
+// The `@/` alias is declared here and mirrored by the `paths` entry in
+// jsconfig.json that the editor reads — keep the two in step, or imports
+// resolve for one and not the other.
 const src = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "src")
 
 // https://vite.dev/config/

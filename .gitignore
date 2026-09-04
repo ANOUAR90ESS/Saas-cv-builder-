@@ -29,7 +29,6 @@ dist-ssr
 
 .env
 .vite
-base44/.app.jsonc
 
 # Android / Gradle build output. Machine-local state that must never be
 # committed — .gradle/ alone was carrying ~884 KB of one machine's build cache.
