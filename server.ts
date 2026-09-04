@@ -4,18 +4,41 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { requireAuth, AuthRequest } from './src/middleware/auth.ts';
 import { aiGuard, aiCors } from './src/middleware/aiGuard.ts';
+import { getAdminAuth, isAdminConfigured } from './src/lib/firebase-admin.ts';
+import {
+  isAuthenticWebhook,
+  isBillingConfigured,
+  paddleConfig,
+  parseWebhook,
+} from './src/middleware/paddle.ts';
+import {
+  claimPurchases,
+  consumeCredit,
+  getEntitlement,
+  markEventSeen,
+  recordPurchase,
+  upsertSubscription,
+} from './src/db/billing.ts';
 import { getOrCreateUser } from './src/db/users.ts';
 import { getUserCvs, saveCv } from './src/db/cvs.ts';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // A host that assigns a port (most of them) sets PORT; 3000 stays the default.
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Behind a proxy (Vercel, a load balancer, Cloudflare) req.ip is the
   // proxy's address unless Express is told to read X-Forwarded-For. The rate
   // limiter keys on req.ip, so without this every visitor shares one bucket
   // and the first few would lock out everyone else.
   if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY);
+
+  // The Paddle webhook needs the exact bytes Paddle signed, so its raw parser
+  // must run BEFORE express.json -- once json() has consumed the stream the
+  // body is a parsed object and the signature can never verify again. This
+  // ordering is load-bearing: with it reversed every webhook is rejected and
+  // no payment is ever recorded, while the endpoint still answers politely.
+  app.use('/api/billing/webhook', express.raw({ type: '*/*', limit: '1mb' }));
 
   // A body limit belongs here rather than only in the guard: the guard reads
   // Content-Length, which a caller controls, and this is what actually stops
@@ -649,6 +672,143 @@ SCHEMA:
     }
   });
 
+
+  // ------------------------------------------------------------- billing
+  //
+  // Two ways to pay for one thing. A one-time purchase grants a single export
+  // and works signed out, which is what the site advertises; a subscription
+  // grants unlimited exports and needs an account, which is why it is offered
+  // inside the app rather than on the marketing pages.
+  //
+  // Everything below treats the browser as untrusted. Entitlements are only
+  // ever written by the Paddle webhook, never by a client call.
+
+  /** The ids the checkout needs. Public by design: they identify prices, not secrets. */
+  app.get('/api/billing/config', (_req, res) => {
+    res.json({
+      configured: isBillingConfigured,
+      environment: paddleConfig.environment,
+      clientToken: paddleConfig.clientToken,
+      priceIdOneTime: paddleConfig.priceIdOneTime,
+      priceIdSubscription: paddleConfig.priceIdSubscription,
+    });
+  });
+
+  /**
+   * Reads the caller's claim tokens.
+   *
+   * A guest purchase is held by the browser, so the tokens arrive on the
+   * request. They are unguessable ids, not authorisation: presenting one only
+   * points at a purchase row, and spending it is still a conditional update.
+   */
+  function claimTokensFrom(req: express.Request): string[] {
+    const raw = req.get('x-claim-tokens') || '';
+    return raw.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 20);
+  }
+
+  /** Resolves the signed-in user, or null. Never throws for "signed out". */
+  async function optionalUserId(req: express.Request): Promise<number | null> {
+    const header = req.headers.authorization;
+    if (!header?.startsWith('Bearer ') || !isAdminConfigured) return null;
+    try {
+      const decoded = await getAdminAuth().verifyIdToken(header.split('Bearer ')[1]);
+      const user = await getOrCreateUser(decoded.uid, decoded.email || '');
+      return user.id;
+    } catch {
+      return null;
+    }
+  }
+
+  /** What this caller may do. The only question the export gate asks. */
+  app.get('/api/billing/entitlement', async (req, res) => {
+    if (!isBillingConfigured) {
+      return res.status(503).json({ error: 'Billing is not configured in this environment.' });
+    }
+    try {
+      const userId = await optionalUserId(req);
+      res.json(await getEntitlement(userId, claimTokensFrom(req)));
+    } catch (error: any) {
+      console.error('Entitlement check failed:', error);
+      res.status(500).json({ error: 'Could not check your entitlement. Please try again.' });
+    }
+  });
+
+  /**
+   * Spends one export.
+   *
+   * Called immediately before the file is generated. A subscriber spends
+   * nothing; a purchase is consumed once and cannot be consumed twice, because
+   * the update is conditional on it still being unspent.
+   */
+  app.post('/api/billing/consume', async (req, res) => {
+    if (!isBillingConfigured) {
+      return res.status(503).json({ error: 'Billing is not configured in this environment.' });
+    }
+    try {
+      const userId = await optionalUserId(req);
+      const tokens = claimTokensFrom(req);
+      const entitlement = await getEntitlement(userId, tokens);
+
+      if (!entitlement.canExport) {
+        return res.status(402).json({ error: 'Payment required.', entitlement });
+      }
+      if (entitlement.via === 'purchase' && !(await consumeCredit(userId, tokens))) {
+        // Lost a race with another tab. Honest refusal beats a free export.
+        return res.status(402).json({
+          error: 'That download has already been used.',
+          entitlement: await getEntitlement(userId, tokens),
+        });
+      }
+      res.json({ ok: true, entitlement: await getEntitlement(userId, tokens) });
+    } catch (error: any) {
+      console.error('Consume failed:', error);
+      res.status(500).json({ error: 'Could not start your download. Please try again.' });
+    }
+  });
+
+  /** Moves guest purchases onto an account, so signing in keeps what was bought. */
+  app.post('/api/billing/claim', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      const user = await getOrCreateUser(req.user!.uid, req.user!.email || '');
+      const claimed = await claimPurchases(user.id, claimTokensFrom(req));
+      res.json({ claimed, entitlement: await getEntitlement(user.id, []) });
+    } catch (error: any) {
+      console.error('Claim failed:', error);
+      res.status(500).json({ error: 'Could not attach your purchases to this account.' });
+    }
+  });
+
+  /**
+   * Paddle's webhook. The only writer of entitlements.
+   *
+   * Mounted with a raw body parser because the signature covers the exact
+   * bytes Paddle sent; re-serialising parsed JSON does not reproduce them.
+   */
+  app.post('/api/billing/webhook', async (req, res) => {
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body);
+    const signature = req.get('paddle-signature');
+
+    // Is it really from Paddle? A no here is final: 400, and Paddle stops.
+    if (!signature || !(await isAuthenticWebhook(raw, signature))) {
+      return res.status(400).json({ error: 'Invalid signature.' });
+    }
+
+    try {
+      const event = await parseWebhook(raw, signature);
+      // Paddle retries anything it does not get a 2xx for, so a replay must be
+      // a no-op rather than a second grant. markEventSeen is that check.
+      const fresh = await markEventSeen(event.eventId, event.eventType, event.data);
+      if (!fresh) return res.json({ ok: true, duplicate: true });
+      await applyPaddleEvent(event);
+      res.json({ ok: true });
+    } catch (error: any) {
+      // Authentic but we could not handle it. 500 asks Paddle to try again,
+      // which is right: the notification is real and the failure is ours.
+      console.error('[paddle] authentic webhook failed to apply:', error);
+      res.status(500).json({ error: 'Could not record that event.' });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -671,6 +831,89 @@ SCHEMA:
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+}
+
+/**
+ * Turns a verified Paddle event into an entitlement.
+ *
+ * Only three event families matter. A completed transaction is either the
+ * first payment of a subscription, which the subscription events describe
+ * better, or a one-time purchase; the subscription events carry the period
+ * dates that decide access.
+ */
+async function applyPaddleEvent(event: any) {
+  const data = event.data || {};
+
+  switch (event.eventType) {
+    case 'transaction.completed': {
+      // A subscription's own invoices also complete. Those are handled by the
+      // subscription events, which know when access runs to.
+      if (data.subscriptionId) return;
+
+      const userId = await userIdFromCustomData(data.customData);
+      const total = data.details?.totals?.total;
+      const token = await recordPurchase({
+        transactionId: data.id,
+        email: data.customer?.email ?? null,
+        amount: total != null ? Number(total) : null,
+        currency: data.currencyCode ?? null,
+        userId,
+      });
+      console.log(
+        `[paddle] purchase ${data.id} recorded${token ? ' (guest)' : ' for user ' + userId}`
+      );
+      return;
+    }
+
+    case 'subscription.created':
+    case 'subscription.updated':
+    case 'subscription.activated':
+    case 'subscription.resumed':
+    case 'subscription.paused':
+    case 'subscription.canceled': {
+      const userId = await userIdFromCustomData(data.customData);
+      if (userId == null) {
+        // Without an account a subscription cannot be honoured on a second
+        // device, so this is a real failure rather than something to swallow:
+        // the checkout must always pass the uid through custom data.
+        console.error(`[paddle] subscription ${data.id} has no linked user; ignoring`);
+        return;
+      }
+      const end = data.currentBillingPeriod?.endsAt ?? data.nextBilledAt ?? null;
+      await upsertSubscription({
+        subscriptionId: data.id,
+        userId,
+        status: data.status,
+        currentPeriodEnd: end ? new Date(end) : null,
+        cancelAtPeriodEnd: data.scheduledChange?.action === 'cancel',
+        priceId: data.items?.[0]?.price?.id ?? null,
+      });
+      console.log(`[paddle] subscription ${data.id} -> ${data.status} for user ${userId}`);
+      return;
+    }
+
+    default:
+      // Recorded in paddle_events either way, which is the point of that table.
+      return;
+  }
+}
+
+/**
+ * The app user behind a checkout, from the uid the client passes as custom
+ * data. Null for a guest, which is expected for one-time purchases and a
+ * problem for subscriptions.
+ */
+async function userIdFromCustomData(customData: any): Promise<number | null> {
+  const uid = customData?.uid;
+  const email = customData?.email;
+  if (!uid) return null;
+  try {
+    const user = await getOrCreateUser(String(uid), String(email || ''));
+    return user.id;
+  } catch (error) {
+    console.error('[paddle] could not resolve user for uid', uid, error);
+    return null;
+  }
 }
 
 startServer();
