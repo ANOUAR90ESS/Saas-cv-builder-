@@ -12,6 +12,13 @@ import {
   parseWebhook,
 } from './src/middleware/paddle.ts';
 import {
+  canExportFiles,
+  ExportUnavailableError,
+  exportFileName,
+  renderDocx,
+  renderPdf,
+} from './src/server/exportFiles.ts';
+import {
   claimPurchases,
   consumeCredit,
   getEntitlement,
@@ -807,6 +814,96 @@ SCHEMA:
       console.error('[paddle] authentic webhook failed to apply:', error);
       res.status(500).json({ error: 'Could not record that event.' });
     }
+  });
+
+
+  // -------------------------------------------------------------- exports
+  //
+  // The file is produced here, not in the browser. That is the whole reason
+  // this route exists: while the PDF was built client-side, any paywall was a
+  // question the client asked itself, with the answer already on its own
+  // machine. Now the bytes do not exist until the server has decided the
+  // caller may have them.
+  //
+  // Order matters and is deliberate: check, then generate, then charge. A
+  // render that fails must never spend someone's paid download, so the credit
+  // is consumed only once there is a finished file to hand back.
+
+  async function handleExport(
+    req: express.Request,
+    res: express.Response,
+    kind: 'pdf' | 'docx'
+  ) {
+    const cv = req.body?.cv;
+    if (!cv || typeof cv !== 'object') {
+      return res.status(400).json({ error: 'No CV supplied.' });
+    }
+
+    const userId = await optionalUserId(req);
+    const tokens = claimTokensFrom(req);
+
+    // With billing switched off nothing is gated: the app behaves as it did
+    // before any of this existed, which is what a self-hosted or preview
+    // deployment should do.
+    if (isBillingConfigured) {
+      const entitlement = await getEntitlement(userId, tokens);
+      if (!entitlement.canExport) {
+        return res.status(402).json({ error: 'Payment required.', entitlement });
+      }
+    }
+
+    let file: Buffer;
+    try {
+      file = kind === 'pdf' ? await renderPdf(cv) : await renderDocx(cv);
+    } catch (error: any) {
+      if (error instanceof ExportUnavailableError) {
+        console.error('[export] unavailable:', error.message);
+        return res
+          .status(503)
+          .json({ error: 'Exports are unavailable on this server right now.' });
+      }
+      console.error(`[export] ${kind} failed:`, error);
+      return res.status(500).json({ error: 'Could not build your file. Please try again.' });
+    }
+
+    // Charged only now, and only when a purchase is what is paying: a
+    // subscriber spends nothing.
+    if (isBillingConfigured) {
+      const entitlement = await getEntitlement(userId, tokens);
+      if (entitlement.via === 'purchase' && !(await consumeCredit(userId, tokens))) {
+        // Another tab spent it while this file was rendering. The work is
+        // wasted, which is the right way round: never hand over a file that
+        // was not paid for.
+        return res.status(402).json({
+          error: 'That download has already been used.',
+          entitlement: await getEntitlement(userId, tokens),
+        });
+      }
+    }
+
+    const name = exportFileName(cv, kind);
+    res.setHeader(
+      'Content-Type',
+      kind === 'pdf'
+        ? 'application/pdf'
+        : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    );
+    // RFC 5987, so a CV titled in Arabic keeps its name.
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${name.replace(/[^\x20-\x7e]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(name)}`
+    );
+    res.setHeader('Content-Length', String(file.length));
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(file);
+  }
+
+  app.post('/api/export/pdf', (req, res) => handleExport(req, res, 'pdf'));
+  app.post('/api/export/docx', (req, res) => handleExport(req, res, 'docx'));
+
+  /** Whether this deployment can produce files at all, for the UI to check. */
+  app.get('/api/export/status', async (_req, res) => {
+    res.json({ available: await canExportFiles(), gated: isBillingConfigured });
   });
 
   // Vite middleware for development
