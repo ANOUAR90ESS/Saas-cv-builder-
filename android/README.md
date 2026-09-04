@@ -18,12 +18,13 @@ features in the shipped app, and nothing else — which makes the cause hard to
 find later.
 
 Without it the WebView serves the bundled `dist/` from the origin
-`https://localhost`. The Base44 client is created with `serverUrl: ''`
-(`src/api/base44Client.js`), so every API call is a *relative* URL. On the web
-that resolves against `https://dexacv.com` and reaches the backend. Inside the
-shell it resolves against `https://localhost` — the app's own asset server —
-so `base44.functions.invoke("aiAssist", …)` never leaves the phone. The rest of
-the app keeps working, because the rest of the app needs no network.
+`https://localhost`. Every backend call goes through `callFunction` in
+`src/api/backend.js`, which fetches `/api/functions/<name>` — a *relative*
+URL. On the web that resolves against `https://dexacv.com` and reaches the
+server. Inside the shell it resolves against `https://localhost` — the app's
+own asset server — so the request never leaves the phone and the AI endpoints
+answer nothing. The rest of the app keeps working, because the rest of the app
+needs no network.
 
 Pointing the shell at the live site makes the WebView's origin the real one.
 Relative URLs resolve correctly, the session cookie is sent, and there is no

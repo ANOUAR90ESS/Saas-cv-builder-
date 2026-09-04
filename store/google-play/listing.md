@@ -10,7 +10,7 @@ La app ya está simplificada: **100% local, sin login, sin sincronización, sin 
 | Campo | Valor |
 |---|---|
 | **App name** (30 max) | DexaCV: CV Builder & Resume Maker |
-| **Package name** | `com.base[app-id].app` (encuentra `app-id` en la URL del editor de Base44) |
+| **Package name** | `com.dexacv` (el `applicationId` en `android/app/build.gradle`) |
 | **Categoría** | Productividad (Productivity) |
 | **Tipo de app** | Aplicación |
 | **¿Contiene anuncios?** | No |
@@ -117,10 +117,12 @@ Build a polished, recruiter-ready CV in minutes. Download it free — no waterma
 
 **Requisito:** PNG o JPEG, 1024 px × 500 px.
 
-Ya generado y listo para subir:
-- **URL del feature graphic:** https://media.base44.com/images/public/6a8a351cc082996c84425f54/258d0864b_generated_image.png
+Ya generado y versionado en este repositorio:
+- **Archivo:** `store/google-play/assets/feature-graphic-1024x500.png`
 
-> Descarga esta imagen y súbela a Play Console → Presencia en Google Play → Gráfico de presentación.
+> Súbelo en Play Console → Presencia en Google Play → Gráfico de presentación.
+> Para regenerarlo tras un cambio de marca, edita `store/google-play/assets/graphic-source.html`
+> y vuelve a capturarlo (ver §17).
 
 ---
 
@@ -128,14 +130,18 @@ Ya generado y listo para subir:
 
 **Requisito:** PNG, 512 px × 512 px, 32-bit (sin alpha en el borde).
 
-Iconos generados (512×512, listos para subir) — elige uno:
+El icono ya vive en el repositorio y es el mismo que usan la web y la PWA:
 
-| Variante | Descripción | URL |
-|---|---|---|
-| A — Monograma "D" | "D" blanco bold sobre degradado índigo→violeta, minimal y legible a pequeño tamaño | https://media.base44.com/images/public/6a8a351cc082996c84425f54/9e434ea54_generated_image.png |
-| B — "D" + documento | "D" cuyo trazo vertical sugiere una esquina de página doblada (alusión a CV) | https://media.base44.com/images/public/6a8a351cc082996c84425f54/ab57043de_generated_image.png |
+| Uso | Archivo |
+|---|---|
+| Icono de Play Store (512×512) | `public/android-chrome-512x512.png` |
+| Icono maskable / adaptable | `public/icon-maskable-512.png` |
+| Iconos del launcher en el APK | `android/app/src/main/res/mipmap-*/` |
 
-> Recomendado: la **variante A** es la más limpia y reconocible como icono de launcher. Sube la elegida en Play Console → Presencia en Google Play → Icono de la app. Para el icono adaptable (adaptive icon), usa el mismo gráfico como capa frontal sobre fondo de color sólido (#4f46e5 o #1e1b4b).
+> Súbelo en Play Console → Presencia en Google Play → Icono de la app. Para el
+> icono adaptable usa la capa maskable sobre fondo sólido `#4f46e5` o `#1e1b4b`.
+> Play Store rechaza PNG con canal alfa en el borde: aplana sobre fondo opaco si
+> el validador se queja.
 
 ---
 
@@ -183,7 +189,8 @@ Mismo tratamiento (capturas reales + marco de dispositivo), en `store/screenshot
 
 ### Opcional: capturas reales adicionales
 
-Toma estas capturas en un dispositivo Android (o desde el preview de Base44 en viewport móvil):
+Toma estas capturas en un dispositivo Android real, o con `npm run dev` y el
+emulador de móvil de las DevTools:
 
 | # | Pantalla a capturar | Texto superpuesto sugerido |
 |---|---|---|
@@ -281,12 +288,12 @@ Proporciona un correo de contacto para los usuarios:
 
 ## 14. Checklist final antes de enviar
 
-- [ ] App publicada en Base44 y URL estable
-- [ ] AAB generado desde Base44 (Publish → Mobile app → Build Store Files → Create Google Play files)
+- [ ] Sitio desplegado y estable en https://dexacv.com (el shell carga el sitio en vivo)
+- [ ] AAB generado y firmado localmente (§15)
 - [ ] Cuenta de Google Play Developer activa ($25 pagados)
 - [ ] App creada en Play Console con package name correcto
 - [ ] AAB subido a una vía (empezar con Pruebas internas)
-- [ ] Gráfico de presentación subido (URL arriba)
+- [ ] Gráfico de presentación subido (`store/google-play/assets/`)
 - [ ] Icono 512×512 subido
 - [ ] Mínimo 2 capturas de pantalla subidas
 - [ ] Descripción corta + completa rellenadas
@@ -301,11 +308,25 @@ Proporciona un correo de contacto para los usuarios:
 
 ---
 
-## 15. Pasos en Base44 (no se pueden hacer desde aquí)
+## 15. Generar el AAB (build local)
 
-1. **Publish** (arriba a la derecha) → pestaña **Mobile app**.
-2. **Check Your App** → **Run App Scan** → corrige cualquier aviso con **Fix with AI**.
-3. **Build Store Files** → **Create Google Play files** → revisa el logo → **Generate Files** → **Download** (.aab).
+```bash
+npm run build          # compila el sitio en dist/
+npx cap sync android   # copia dist/ y los plugins al proyecto Android
+```
+
+Después construye el bundle firmado desde `android/` y súbelo al listing
+`com.dexacv`, con la **misma clave de subida** que todas las versiones
+anteriores. Sube `versionCode` en `android/app/build.gradle` por encima de
+cualquier build ya presente en cualquier canal, incluidas pruebas internas y
+alfa cerrada.
+
+Detalles de firma, App Links y el porqué de `server.url` en
+[`android/README.md`](../../android/README.md).
+
+> Como el shell carga el sitio en vivo, la mayoría de los cambios llegan a los
+> usuarios al publicar **el sitio**. Solo hace falta subir un AAB nuevo cuando
+> cambia lo que vive en el shell: icono, splash, permisos, plugins o config.
 
 ## 16. Pasos en Google Play Console
 
@@ -316,4 +337,30 @@ Proporciona un correo de contacto para los usuarios:
 5. Rellena **Política de la app**: privacidad, clasificación, datos de seguridad, anuncios, compras.
 6. Envía a revisión para **Producción** (o pruebas cerradas/abiertas primero).
 
-Guía visual paso a paso: [submit-your-app.base44.app](https://submit-your-app.base44.app/)
+Guía oficial de Google: [Preparar y lanzar una versión](https://support.google.com/googleplay/android-developer/answer/9859152)
+
+---
+
+## 17. Regenerar los gráficos de marca
+
+El gráfico de presentación y la imagen Open Graph se renderizan desde una sola
+plantilla HTML versionada, así que no dependen de ningún servicio externo:
+
+```bash
+CHROME=/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell
+
+# Feature graphic 1024x500
+$CHROME --disable-gpu --no-sandbox --hide-scrollbars --force-device-scale-factor=1 \
+  --window-size=1024,500 --screenshot=store/google-play/assets/feature-graphic-1024x500.png \
+  file://$PWD/store/google-play/assets/graphic-source.html
+
+# Open Graph 1200x630 (el que sirve el sitio)
+$CHROME --disable-gpu --no-sandbox --hide-scrollbars --force-device-scale-factor=1 \
+  --window-size=1200,630 --screenshot=public/og-image.png \
+  file://$PWD/store/google-play/assets/graphic-source.html
+```
+
+`graphic-source.html` está dimensionada a 1200×630; para el feature graphic
+ajusta el bloque `html,body` a 1024×500 antes de capturar. Usa
+`headless_shell` y no `chromium`: el segundo descuenta 87 px de cromo de
+ventana y recorta el resultado.

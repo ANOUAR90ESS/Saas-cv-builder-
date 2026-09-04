@@ -19,7 +19,7 @@ device unless the user exports it, uploads a photo, or asks the AI about it.
 
 ```bash
 npm install
-cp .env.example .env.local     # fill in the two VITE_ values
+cp .env.example .env.local     # fill in the VITE_FIREBASE_ values
 npm run dev
 ```
 
@@ -27,9 +27,10 @@ Every variable the project reads — what it is, where to get it, and
 which ones must never reach the browser — is in
 [`ENVIRONMENT.md`](ENVIRONMENT.md).
 
-`.env.local` holds only the Supabase project URL and its anon key. Both are
-public by design: the anon key identifies the project and grants nothing beyond
-what row-level security allows a signed-out visitor.
+`.env.local` holds the Firebase web config. Every value in it is public by
+design: it identifies the project and grants nothing on its own, because what a
+caller may read or write is decided by Firebase Auth and `firestore.rules`.
+Vite compiles these into the bundle either way.
 
 **Every other secret belongs to the edge functions and must never appear in a
 `.env` the build can read.** Vite inlines those into the JavaScript bundle,

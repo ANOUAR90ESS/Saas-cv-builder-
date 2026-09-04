@@ -16,8 +16,13 @@ unzip it and read the strings. A value is public the moment Vite sees it —
 that is what the `VITE_` prefix means, and Vite refuses to expose anything
 without it.
 
-**Secret** values live only inside edge functions, which run on Supabase's
-servers. A browser never receives them.
+**Secret** values live only on the server. A browser never receives them.
+
+> **Sections 2 and 3 are out of date.** They describe Supabase edge functions.
+> The code no longer calls Supabase: `src/lib/firebase.ts` and
+> `src/api/auth.js` use Firebase, and the AI routes are served by `server.ts`.
+> Only `supabase/migrations/` survives, and nothing runs it. Sections 1, 1b and
+> 4 were checked against the code and are current.
 
 > Putting `ANTHROPIC_API_KEY` in `.env.local` does not make the AI work — the
 > frontend never calls Claude. It publishes your key.
@@ -29,18 +34,50 @@ servers. A browser never receives them.
 Copy `.env.example` to `.env.local`. In production these go in Vercel under
 **Settings → Environment Variables**, with the same names.
 
-| Name | Where to get it | Example |
+All of them come from one page: Firebase Console → **Project settings** →
+General → *Your apps* → the web app → **SDK setup and configuration** →
+*Config*.
+
+| Name | Config key | Example |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Supabase → Project Settings → API → **Project URL** | `https://abcdefgh.supabase.co` |
-| `VITE_SUPABASE_ANON_KEY` | same page → **Project API keys** → `anon` `public` | `eyJhbGciOi...` (a long JWT) |
+| `VITE_FIREBASE_API_KEY` | `apiKey` | `AIzaSy...` |
+| `VITE_FIREBASE_AUTH_DOMAIN` | `authDomain` | `your-project.firebaseapp.com` |
+| `VITE_FIREBASE_PROJECT_ID` | `projectId` | `your-project` |
+| `VITE_FIREBASE_STORAGE_BUCKET` | `storageBucket` | `your-project.appspot.com` |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | `messagingSenderId` | `123456789012` |
+| `VITE_FIREBASE_APP_ID` | `appId` | `1:1234:web:abcd` |
+| `VITE_FIREBASE_FIRESTORE_DATABASE_ID` | — | blank unless you made a *named* Firestore database |
 
-Both are **public**, and that is by design. The anon key identifies the project
-and carries no privileges beyond what row-level security grants a signed-out
-visitor. Supabase publishes it in its own examples.
+Every one is **public**, and that is by design. Firebase publishes these in its
+own quickstarts. They identify the project; what a caller may actually read or
+write is decided by Firebase Auth and by `firestore.rules`, never by knowing
+these strings. There is no Firebase value that is safe in the browser only if
+kept quiet — the privileged credential is the Admin SDK's, which lives on the
+server and is not in this table.
 
-The `service_role` key sits on that same page and is **not** one of these. It
-bypasses row-level security entirely. It never goes in a `VITE_` variable, and
-you never need to set it by hand — see section 3.
+> **Replaces `firebase-applet-config.json`.** `src/lib/firebase.ts` used to
+> import that file directly. It is gitignored, so a fresh clone had nothing to
+> import and `npm run build` failed before it produced anything. If the file is
+> still on your machine, `vite.config.js` reads it to fill in whatever these
+> variables do not set, and warns. Once `.env.local` is in place you can delete
+> it.
+
+---
+
+## 1b. Server — the host's environment
+
+Read by `server.ts` through `process.env`. None is compiled into the bundle.
+
+| Name | What it is for | Without it |
+|---|---|---|
+| `FIREBASE_PROJECT_ID` | firebase-admin verifies the ID tokens `requireAuth` checks | the server refuses to start |
+| `GEMINI_API_KEY` | the `/api/functions/ai-assist` and `import-profile` routes | those routes answer `503`; the rest of the app works |
+| `SQL_HOST`, `SQL_USER`, `SQL_PASSWORD`, `SQL_DB_NAME` | Postgres behind `/api/cvs` and `/api/user/sync` | those two routes fail; CVs still live in `localStorage` |
+
+`FIREBASE_PROJECT_ID` is the same project as `VITE_FIREBASE_PROJECT_ID` and is
+not a secret; it is listed separately only because the server reads it from a
+different place. `GEMINI_API_KEY` **is** a secret and must never be given a
+`VITE_` name.
 
 ---
 
@@ -159,13 +196,13 @@ installed app presents is never your upload certificate. See
 
 Local development:
 
-- [ ] `.env.local` has both `VITE_` values
-- [ ] `supabase secrets set` run with the four secrets
-- [ ] `supabase db push` and `supabase functions deploy` run
+- [ ] `.env.local` has every `VITE_FIREBASE_` value from section 1
+- [ ] `FIREBASE_PROJECT_ID` and `GEMINI_API_KEY` are in the shell that runs `npm run dev`
 
 Before a production deploy:
 
-- [ ] both `VITE_` values set in Vercel
+- [ ] every `VITE_FIREBASE_` value set in Vercel
+- [ ] the section 1b server variables set on the host
 - [ ] `ALLOWED_ORIGINS` includes the deployment's real origin
 - [ ] `CONTACT_FROM` is on a domain verified with Resend
 - [ ] nothing secret appears in `git grep -i "sk-ant-\|re_\|service_role"`
