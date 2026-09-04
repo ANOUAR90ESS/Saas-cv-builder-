@@ -1,5 +1,33 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { currentUser, onAuthChange, signOut } from '@/api/auth';
+
+// @/api/auth is NOT imported at the top. It pulls in the Firebase Auth SDK,
+// which was 570 KB of the entry chunk -- the single largest thing the app
+// downloaded before it could paint anything. This app works without an
+// account by design, so the first screen has no business waiting on an auth
+// library. It is imported on mount instead, in parallel with the first route.
+const authModule = () => import('@/api/auth');
+
+// Whether the last visit ended signed in. A signed-out visitor -- who the app
+// is built for -- renders immediately. A returning signed-in user still gets
+// the brief gate, so they never see a signed-out header flash to their
+// account. Only a hint: it decides how to wait, never who anyone is.
+const SESSION_HINT = 'dexacv_had_session';
+
+function expectsSession() {
+  try {
+    return localStorage.getItem(SESSION_HINT) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberSession(hasUser) {
+  try {
+    localStorage.setItem(SESSION_HINT, hasUser ? '1' : '0');
+  } catch {
+    // Private mode, or storage disabled. The hint is optional.
+  }
+}
 
 // Session state for the whole app.
 //
@@ -23,37 +51,56 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(expectsSession);
   const [authError, setAuthError] = useState(null);
+
+  const applyUser = (nextUser) => {
+    setUser(nextUser);
+    rememberSession(!!nextUser);
+    setIsLoadingAuth(false);
+  };
 
   const checkUserAuth = async () => {
     setIsLoadingAuth(true);
     try {
-      setUser(await currentUser());
+      const { currentUser } = await authModule();
+      applyUser(await currentUser());
       setAuthError(null);
     } catch (error) {
       // Reaching here means the network or the auth service failed — "nobody
       // is signed in" comes back from currentUser() as null, not as a throw.
       console.error('Auth check failed:', error);
       setAuthError({ type: 'unknown', message: error.message });
-    } finally {
       setIsLoadingAuth(false);
     }
   };
 
   useEffect(() => {
+    let unsubscribe = null;
+    let cancelled = false;
+
     checkUserAuth();
+
     // Keeps this tab in step with a sign-in finishing, a token refreshing, or
     // a sign-out in another tab.
-    return onAuthChange((nextUser) => {
-      setUser(nextUser);
-      setIsLoadingAuth(false);
-    });
+    authModule()
+      .then(({ onAuthChange }) => {
+        if (cancelled) return;
+        unsubscribe = onAuthChange(applyUser);
+      })
+      .catch((error) => console.error('Auth listener not registered:', error));
+
+    return () => {
+      cancelled = true;
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const logout = async (shouldRedirect = true) => {
+    const { signOut } = await authModule();
     await signOut();
     setUser(null);
+    rememberSession(false);
     if (shouldRedirect) window.location.href = '/';
   };
 

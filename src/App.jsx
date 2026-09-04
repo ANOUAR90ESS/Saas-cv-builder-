@@ -46,7 +46,12 @@ const PublicProfile = lazy(() => import('@/pages/PublicProfile'));
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
+  // Only a returning signed-in visitor waits here. AuthContext starts
+  // isLoadingAuth false for everyone else, so the app is built and painted
+  // while the Firebase Auth chunk is still downloading — which is the whole
+  // point of an app that works without an account. The gate remains for a
+  // visitor we expect to have a session, who would otherwise watch the header
+  // flash from "Sign in" to their own account.
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">

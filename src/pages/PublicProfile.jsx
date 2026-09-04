@@ -19,7 +19,7 @@ import {
   getCareerProfile,
   getPortfolioProjects
 } from "@/lib/careerStorage";
-import { db } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
 export default function PublicProfile() {
@@ -49,6 +49,7 @@ export default function PublicProfile() {
 
       // 2. Query Firestore for public profile
       try {
+        const db = await getDb();
         const q = query(
           collection(db, "career_profiles"),
           where("username", "==", cleanUsername)

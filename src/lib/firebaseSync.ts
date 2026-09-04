@@ -9,7 +9,7 @@ import {
   where,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType } from './firebase';
+import { getDb, auth, handleFirestoreError, OperationType } from './firebase';
 
 export interface CloudCV {
   id: string;
@@ -33,6 +33,7 @@ export async function syncCvToFirestore(cv: { id: string; title?: string; [key: 
   const currentUser = auth.currentUser;
   if (!currentUser) return;
 
+  const db = await getDb();
   const docId = sanitizeDocId(cv.id);
   const docRef = doc(db, 'cvs', docId);
   const path = `cvs/${docId}`;
@@ -84,6 +85,7 @@ export async function fetchUserCvsFromFirestore(): Promise<any[]> {
   const currentUser = auth.currentUser;
   if (!currentUser) return [];
 
+  const db = await getDb();
   const path = 'cvs';
   try {
     const q = query(collection(db, 'cvs'), where('userId', '==', currentUser.uid));
@@ -104,6 +106,7 @@ export async function deleteCvFromFirestore(cvId: string): Promise<void> {
   const currentUser = auth.currentUser;
   if (!currentUser) return;
 
+  const db = await getDb();
   const docId = sanitizeDocId(cvId);
   const path = `cvs/${docId}`;
   try {

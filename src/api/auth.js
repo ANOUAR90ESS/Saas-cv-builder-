@@ -1,6 +1,6 @@
 // The seam for everything to do with accounts, matching src/api/backend.js.
 // Powered completely by Firebase Auth and Firestore.
-import { auth, googleAuthProvider, db } from "@/lib/firebase";
+import { auth, googleAuthProvider, getDb } from "@/lib/firebase";
 import {
   signInWithPopup,
   signOut as fbSignOut,
@@ -14,7 +14,38 @@ import {
   reauthenticateWithCredential,
   sendEmailVerification,
 } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+
+
+/**
+ * Mirrors the account onto its Firestore profile document.
+ *
+ * Firestore is imported here rather than at the top of the file so that it
+ * stays out of the boot bundle -- see getDb() in @/lib/firebase. A failure is
+ * logged and swallowed on purpose: the account exists either way, and refusing
+ * the sign-in over a profile mirror would be the worse outcome.
+ */
+async function saveUserProfile(fbUser) {
+  try {
+    const [{ doc, setDoc, serverTimestamp }, db] = await Promise.all([
+      import("firebase/firestore"),
+      getDb(),
+    ]);
+    await setDoc(
+      doc(db, "users", fbUser.uid),
+      {
+        id: fbUser.uid,
+        email: fbUser.email || "",
+        displayName: (fbUser.displayName || "").slice(0, 120),
+        photoURL: (fbUser.photoURL || "").slice(0, 500),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (e) {
+    console.warn("Firestore profile sync warning:", e);
+  }
+}
 
 /** Format a user from Firebase */
 function formatFirebaseUser(user) {
@@ -99,22 +130,7 @@ export async function signInWithGoogle() {
     const result = await signInWithPopup(auth, googleAuthProvider);
     const fbUser = result.user;
     if (fbUser) {
-      try {
-        await setDoc(
-          doc(db, "users", fbUser.uid),
-          {
-            id: fbUser.uid,
-            email: fbUser.email || "",
-            displayName: (fbUser.displayName || "").slice(0, 120),
-            photoURL: (fbUser.photoURL || "").slice(0, 500),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } catch (e) {
-        console.warn("Firestore profile sync warning:", e);
-      }
+      await saveUserProfile(fbUser);
       return formatFirebaseUser(fbUser);
     }
   } catch (fbErr) {
@@ -131,22 +147,7 @@ export async function register(email, password) {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     const fbUser = result.user;
     if (fbUser) {
-      try {
-        await setDoc(
-          doc(db, "users", fbUser.uid),
-          {
-            id: fbUser.uid,
-            email: fbUser.email || "",
-            displayName: (fbUser.displayName || "").slice(0, 120),
-            photoURL: (fbUser.photoURL || "").slice(0, 500),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      } catch (e) {
-        console.warn("Firestore profile sync warning:", e);
-      }
+      await saveUserProfile(fbUser);
       return formatFirebaseUser(fbUser);
     }
   } catch (err) {
@@ -223,6 +224,10 @@ export async function updateProfile({ full_name }) {
   }
   try {
     await fbUpdateProfile(auth.currentUser, { displayName: full_name });
+    const [{ doc, setDoc, serverTimestamp }, db] = await Promise.all([
+      import("firebase/firestore"),
+      getDb(),
+    ]);
     await setDoc(
       doc(db, "users", auth.currentUser.uid),
       {

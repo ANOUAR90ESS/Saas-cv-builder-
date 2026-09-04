@@ -2,7 +2,7 @@
 // Works seamlessly without an account, with optional Firestore synchronization.
 
 import { loadAllCVs, getActiveId } from "./cvStorage";
-import { db, auth } from "./firebase";
+import { getDb, auth } from "./firebase";
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 
 const APPS_KEY = "dexacv.applications.v1";
@@ -638,6 +638,7 @@ async function syncCareerProfileToFirestore(profile) {
   const user = auth.currentUser;
   if (!user) return;
   try {
+    const db = await getDb();
     const docRef = doc(db, "career_profiles", user.uid);
     await setDoc(
       docRef,
@@ -661,6 +662,7 @@ async function syncApplicationToFirestore(app) {
   const user = auth.currentUser;
   if (!user) return;
   try {
+    const db = await getDb();
     const cleanId = (app.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
     const docRef = doc(db, "job_applications", cleanId);
     await setDoc(
@@ -686,6 +688,7 @@ async function deleteApplicationFromFirestore(id) {
   const user = auth.currentUser;
   if (!user) return;
   try {
+    const db = await getDb();
     const cleanId = (id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
     await deleteDoc(doc(db, "job_applications", cleanId));
   } catch (err) {
@@ -697,6 +700,7 @@ async function syncCoverLetterToFirestore(letter) {
   const user = auth.currentUser;
   if (!user) return;
   try {
+    const db = await getDb();
     const cleanId = (letter.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
     const docRef = doc(db, "cover_letters", cleanId);
     await setDoc(
@@ -721,6 +725,7 @@ async function deleteCoverLetterFromFirestore(id) {
   const user = auth.currentUser;
   if (!user) return;
   try {
+    const db = await getDb();
     const cleanId = (id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
     await deleteDoc(doc(db, "cover_letters", cleanId));
   } catch (err) {
@@ -732,6 +737,7 @@ async function syncInterviewSessionToFirestore(session) {
   const user = auth.currentUser;
   if (!user) return;
   try {
+    const db = await getDb();
     const cleanId = (session.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
     const docRef = doc(db, "interview_sessions", cleanId);
     await setDoc(

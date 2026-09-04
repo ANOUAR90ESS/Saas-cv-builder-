@@ -1,6 +1,10 @@
 import { useLocation } from 'react-router-dom';
-import { currentUser } from "@/api/auth";
 import { useQuery } from '@tanstack/react-query';
+
+// App.jsx imports this page eagerly, so a static import of @/api/auth here put
+// the whole Firebase Auth SDK -- 570 KB -- into the entry chunk that every
+// visitor downloads before the app can paint. The 404 page only needs it once
+// it is actually on screen.
 
 
 export default function PageNotFound({}) {
@@ -11,6 +15,7 @@ export default function PageNotFound({}) {
         queryKey: ['user'],
         queryFn: async () => {
             try {
+                const { currentUser } = await import("@/api/auth");
                 const user = await currentUser();
                 return { user, isAuthenticated: !!user };
             } catch (error) {

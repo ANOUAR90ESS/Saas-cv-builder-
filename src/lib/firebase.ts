@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
 
 // Firebase's web config is public by design: it identifies the project and
 // grants nothing on its own, and it is compiled into the bundle either way.
@@ -31,10 +31,24 @@ if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
 }
 
 export const app = initializeApp(firebaseConfig);
-export const db = firestoreDatabaseId
-  ? getFirestore(app, firestoreDatabaseId)
-  : getFirestore(app);
 export const auth = getAuth(app);
+
+// Firestore is loaded on demand, not at boot. It is by far the heaviest thing
+// this app imports — around 500 KB of the entry chunk, 130 KB of it over the
+// wire — and nothing on the first screen touches it. Only signing in and the
+// CV sync do, both well after the app is interactive, so pulling it eagerly
+// meant every visitor waited on a splash screen for a database they may never
+// use. Memoised, so the second caller gets the first one's instance.
+let dbPromise: Promise<Firestore> | null = null;
+
+export function getDb(): Promise<Firestore> {
+  if (!dbPromise) {
+    dbPromise = import('firebase/firestore').then(({ getFirestore }) =>
+      firestoreDatabaseId ? getFirestore(app, firestoreDatabaseId) : getFirestore(app)
+    );
+  }
+  return dbPromise;
+}
 export const googleAuthProvider = new GoogleAuthProvider();
 
 export enum OperationType {
@@ -83,15 +97,3 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
-
-// Test Firestore connection on boot
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
-    }
-  }
-}
-testConnection();
