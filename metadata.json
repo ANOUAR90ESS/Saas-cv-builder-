@@ -1,6 +1,6 @@
 {
   "name": "DexaCV",
-  "description": "DexaCV is an AI-powered Career Assistant and CV builder. Create professional ATS-friendly CVs, analyze job matches, generate tailored cover letters, practice interviews with an AI coach, track job applications, and showcase your professional profile and portfolio.",
+  "description": "DexaCV is a professional CV Builder and Career & Document Utility Toolkit. Build your CV, fix your files, and prepare your application with tools for PDF, images, CV checking, cover letters, and document formatting.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

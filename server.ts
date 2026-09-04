@@ -19,12 +19,38 @@ async function startServer() {
   }
 
   // API Route: ai-assist
-  app.post('/api/functions/ai-assist', async (req, res) => {
+  app.post('/api/functions/ai-assist', requireAuth, async (req: AuthRequest, res) => {
     if (!ai) {
       return res.status(503).json({ error: 'AI not configured in this environment.' });
     }
     const { action, lang, text, context } = req.body;
     
+    // Auth and credits check
+    if (!req.user?.uid) {
+      return res.status(401).json({ error: "Authentication required for AI features." });
+    }
+    
+    let cost = 1; // Default cost
+    if (action === "analyze_job_fit" || action === "generate_cover_letter" || action === "interview_evaluate") {
+      cost = 2; // More expensive operations
+    }
+    
+    try {
+      const { getOrCreateUser } = await import('./src/db/users.ts');
+      const { verifyAndDeductCredits } = await import('./src/db/subscriptions.ts');
+      
+      const user = await getOrCreateUser(req.user.uid, req.user.email || '');
+      const hasCredits = await verifyAndDeductCredits(user.id, cost);
+      
+      if (!hasCredits) {
+        return res.status(402).json({ error: "Insufficient AI credits. Please upgrade your plan." });
+      }
+      
+    } catch (dbError) {
+      console.error("Credit deduction failed:", dbError);
+      return res.status(500).json({ error: "Failed to verify credits." });
+    }
+
     let prompt = '';
     const name = context?.full_name || "the candidate";
     const title = context?.professional_title || "";
@@ -553,6 +579,26 @@ SCHEMA:
       res.json({ result: parsedResult });
     } catch (err) {
       console.error(err);
+      
+      // Refund credits on failure
+      try {
+        const { db } = await import('./src/db/index.ts');
+        const { aiCreditBalances, users } = await import('./src/db/schema.ts');
+        const { eq } = await import('drizzle-orm');
+        
+        const userRec = await db.select().from(users).where(eq(users.uid, req.user.uid)).limit(1);
+        if (userRec.length > 0) {
+          const credits = await db.select().from(aiCreditBalances).where(eq(aiCreditBalances.userId, userRec[0].id)).limit(1);
+          if (credits.length > 0) {
+            await db.update(aiCreditBalances)
+              .set({ creditsRemaining: credits[0].creditsRemaining + cost })
+              .where(eq(aiCreditBalances.userId, userRec[0].id));
+          }
+        }
+      } catch (refundError) {
+        console.error("Failed to refund credits:", refundError);
+      }
+
       res.status(500).json({ error: 'AI generation failed' });
     }
   });
@@ -629,6 +675,68 @@ SCHEMA:
     } catch (error: any) {
       console.error("Failed to save CV:", error);
       res.status(500).json({ error: error.message || "Failed to save CV" });
+    }
+  });
+
+  // --- Subscription & Entitlement API ---
+  app.get('/api/subscription/status', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user?.uid) return res.status(401).json({ error: "Missing uid" });
+      const { getOrCreateUser } = await import('./src/db/users.ts');
+      const { getSubscriptionStatus } = await import('./src/db/subscriptions.ts');
+      
+      const user = await getOrCreateUser(req.user.uid, req.user.email || '');
+      const status = await getSubscriptionStatus(user.id);
+      res.json(status);
+    } catch (error: any) {
+      console.error("Failed to fetch subscription:", error);
+      res.status(500).json({ error: "Failed to fetch subscription" });
+    }
+  });
+
+  app.post('/api/subscription/google-play/verify', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user?.uid) return res.status(401).json({ error: "Missing uid" });
+      const { purchaseToken, productId } = req.body;
+      if (!purchaseToken || !productId) {
+        return res.status(400).json({ error: "Missing token or product ID" });
+      }
+
+      // In a real application, you would verify the purchaseToken with Google Play Developer API here.
+      // E.g. using googleapis package:
+      // const androidpublisher = google.androidpublisher('v3');
+      // const response = await androidpublisher.purchases.subscriptions.get({ ... })
+
+      const { getOrCreateUser } = await import('./src/db/users.ts');
+      const { updateGooglePlayEntitlement } = await import('./src/db/subscriptions.ts');
+      
+      const user = await getOrCreateUser(req.user.uid, req.user.email || '');
+      
+      // Update our entitlement DB as the source of truth
+      await updateGooglePlayEntitlement(user.id, purchaseToken, productId);
+
+      res.json({ success: true, message: "Entitlement updated from Google Play" });
+    } catch (error: any) {
+      console.error("Google play verification failed:", error);
+      res.status(500).json({ error: "Verification failed" });
+    }
+  });
+
+  app.post('/api/subscription/web/checkout', requireAuth, async (req: AuthRequest, res) => {
+    try {
+      if (!req.user?.uid) return res.status(401).json({ error: "Missing uid" });
+      const { planId } = req.body;
+      
+      // Integrate Stripe or another web payment provider here.
+      // This endpoint should return a checkout session URL.
+      
+      res.json({ 
+        success: true, 
+        message: "Stripe integration placeholder. Would return checkoutUrl here.",
+        checkoutUrl: "/manage-subscription-placeholder" 
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: "Checkout failed" });
     }
   });
 

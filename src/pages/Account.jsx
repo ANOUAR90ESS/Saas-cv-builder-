@@ -10,6 +10,7 @@ import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { useAuth } from "@/lib/AuthContext";
 import { updateProfile, changePassword as changeUserPassword } from "@/api/auth";
 import { deleteAccount } from "@/api/backend";
+import SubscriptionStatus from "@/components/SubscriptionStatus";
 import { useToast } from "@/components/ui/use-toast";
 import { useT } from "@/lib/i18n";
 import { loadAllCVs } from "@/lib/cvStorage";
@@ -227,6 +228,9 @@ export default function Account() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Subscription & Entitlement */}
+            <SubscriptionStatus />
 
             {/* Security */}
             <Card>

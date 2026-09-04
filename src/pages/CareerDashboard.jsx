@@ -16,11 +16,13 @@ import {
   ChevronRight,
   ExternalLink,
   Target,
-  Send
+  Send,
+  Globe
 } from "lucide-react";
 import { loadAllCVs, getActiveId } from "@/lib/cvStorage";
 import {
   getApplications,
+  addApplication,
   getJobMatches,
   getUpcomingReminders,
   getCareerProfile,
@@ -28,6 +30,7 @@ import {
 } from "@/lib/careerStorage";
 import { triggerHaptic } from "@/lib/haptics";
 import { useAuth } from "@/lib/AuthContext";
+import RealJobFinderModal from "@/components/RealJobFinderModal";
 
 export default function CareerDashboard() {
   const navigate = useNavigate();
@@ -40,6 +43,7 @@ export default function CareerDashboard() {
   const [reminders, setReminders] = useState([]);
   const [profile, setProfile] = useState(null);
   const [scoreData, setScoreData] = useState({ totalScore: 82, breakdown: {}, recommendations: [] });
+  const [isJobFinderOpen, setIsJobFinderOpen] = useState(false);
 
   useEffect(() => {
     const loadedCvs = loadAllCVs() || [];
@@ -60,6 +64,27 @@ export default function CareerDashboard() {
     const score = calculateCareerScore({ cv: currentCv, profile: prof, applications: apps, jobMatches: matches });
     setScoreData(score);
   }, []);
+
+  const handleAddFromJobFinder = (jobData, andViewInPage = false) => {
+    addApplication({
+      company: jobData.company,
+      jobTitle: jobData.jobTitle,
+      location: jobData.location,
+      salary: jobData.salary || "",
+      jobUrl: jobData.jobUrl || "",
+      status: jobData.status || "Saved",
+      applicationDate: new Date().toISOString().slice(0, 10),
+      notes: jobData.notes || "Imported from Live Job Search"
+    });
+    const refreshed = getApplications();
+    setApplications(refreshed);
+    triggerHaptic("success");
+
+    if (andViewInPage) {
+      setIsJobFinderOpen(false);
+      navigate("/career/applications");
+    }
+  };
 
   // Compute application stats
   const totalApps = applications.length;
@@ -205,20 +230,30 @@ export default function CareerDashboard() {
           {/* Applications Stats Card */}
           <div className="lg:col-span-8 rounded-2xl border border-border bg-card p-6 shadow-xs flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                 <div>
                   <h2 className="text-lg font-bold text-foreground">Job Applications</h2>
                   <p className="text-xs text-muted-foreground">
                     Live overview of your active hiring pipeline stages.
                   </p>
                 </div>
-                <Link
-                  to="/career/applications"
-                  className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  <span>Open Kanban Tracker</span>
-                  <ArrowRight size={13} />
-                </Link>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsJobFinderOpen(true)}
+                    className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 transition cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <Globe size={13} />
+                    <span>Find Real Jobs</span>
+                  </button>
+                  <Link
+                    to="/career/applications"
+                    className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>Open Kanban Tracker</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
               </div>
 
               {/* Stats Grid */}
@@ -681,6 +716,18 @@ export default function CareerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Real Job Finder Modal */}
+      <RealJobFinderModal
+        isOpen={isJobFinderOpen}
+        onClose={(shouldGoToBoard) => {
+          setIsJobFinderOpen(false);
+          if (shouldGoToBoard) {
+            navigate("/career/applications");
+          }
+        }}
+        onAddToTracker={handleAddFromJobFinder}
+      />
     </div>
   );
 }

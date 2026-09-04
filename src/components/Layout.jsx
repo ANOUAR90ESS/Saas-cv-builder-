@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, NavLink, useNavigate, useOutlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Home, LayoutTemplate, FolderOpen, User, LogIn, Compass } from "lucide-react";
+import { Home, LayoutTemplate, FolderOpen, User, LogIn, Wrench } from "lucide-react";
 import Logo, { LogoMark } from "@/components/Logo";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useT } from "@/lib/i18n";
@@ -13,7 +13,7 @@ export const BRAND = "DexaCV";
 
 const NAV = [
   { key: "nav.builder", to: "/builder" },
-  { key: "nav.careerHub", to: "/dashboard", label: "Career Hub" },
+  { key: "nav.tools", to: "/tools", label: "Tools" },
   { key: "nav.templates", to: "/templates" },
   { key: "nav.cvExamples", to: "/cv-examples" },
   { key: "nav.guides", to: "/guides" },
@@ -112,8 +112,8 @@ export default function Layout() {
               </div>
               <p className="text-gray-500 leading-relaxed">{t("footer.tagline")}</p>
             </div>
-            <FooterCol titleKey="footer.product" links={[["nav.builder", "/builder"], ["Career Hub", "/dashboard"], ["nav.templates", "/templates"], ["nav.cvExamples", "/cv-examples"], ["nav.guides", "/guides"], ["nav.account", "/account"]]} />
-            <FooterCol titleKey="footer.popular" links={[["nav.cvMaker", "/cv-maker"], ["Job Matcher", "/career/job-matcher"], ["Interview Coach", "/career/interview-coach"], ["Application Tracker", "/career/applications"], ["nav.careerAdvice", "/career-advice"], ["nav.coverLetter", "/cover-letter-guide"]]} />
+            <FooterCol titleKey="footer.product" links={[["nav.builder", "/builder"], ["Tools Toolkit", "/tools"], ["nav.templates", "/templates"], ["nav.cvExamples", "/cv-examples"], ["nav.guides", "/guides"], ["nav.account", "/account"]]} />
+            <FooterCol titleKey="footer.popular" links={[["nav.cvMaker", "/cv-maker"], ["CV ATS Checker", "/tools/cv-checker"], ["PDF Compressor", "/tools/compress-pdf"], ["Interview Coach", "/career/interview-coach"], ["Cover Letter Tool", "/tools/cover-letter-generator"], ["nav.careerAdvice", "/career-advice"]]} />
             <FooterCol titleKey="footer.legal" links={[["footer.privacy", "/privacy"], ["footer.terms", "/terms"], ["footer.contact", "/contact"]]} />
           </div>
           <div className="border-t border-border py-5 text-center text-xs text-gray-400">
@@ -158,7 +158,7 @@ function MobileTabBar() {
   const t = useT();
   const tabs = [
     { label: t("tabs.home"), to: "/", icon: Home, match: (p) => p === "/" },
-    { label: "Career", to: "/dashboard", icon: Compass, match: (p) => p.startsWith("/career") || p === "/dashboard" || p === "/tracker" },
+    { label: "Tools", to: "/tools", icon: Wrench, match: (p) => p.startsWith("/tools") || p === "/dashboard" },
     { label: t("nav.templates"), to: "/templates", icon: LayoutTemplate, match: (p) => p === "/templates" },
     { label: t("nav.projects"), to: "/projects", icon: FolderOpen, match: (p) => p === "/projects" },
     { label: t("nav.account"), to: "/account", icon: User, match: (p) => ["/account", "/user", "/profile"].includes(p) },

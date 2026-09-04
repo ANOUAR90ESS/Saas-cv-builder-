@@ -34,14 +34,14 @@ const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const Account = lazy(() => import('@/pages/Account'));
 const Contact = lazy(() => import('@/pages/Contact'));
 const FeaturedGallery = lazy(() => import('@/pages/FeaturedGallery'));
-const CareerDashboard = lazy(() => import('@/pages/CareerDashboard'));
-const JobMatcher = lazy(() => import('@/pages/JobMatcher'));
+const ToolsHub = lazy(() => import('@/pages/ToolsHub'));
+const SingleToolPage = lazy(() => import('@/pages/SingleToolPage'));
 const CoverLetterGenerator = lazy(() => import('@/pages/CoverLetterGenerator'));
 const InterviewCoach = lazy(() => import('@/pages/InterviewCoach'));
-const ApplicationTracker = lazy(() => import('@/pages/ApplicationTracker'));
 const ProfessionalProfile = lazy(() => import('@/pages/ProfessionalProfile'));
 const PortfolioBuilder = lazy(() => import('@/pages/PortfolioBuilder'));
 const PublicProfile = lazy(() => import('@/pages/PublicProfile'));
+const Pricing = lazy(() => import('@/pages/Pricing'));
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings } = useAuth();
@@ -74,6 +74,7 @@ const AuthenticatedApp = () => {
         <Route path="/profile" element={<Account />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/featured-templates" element={<FeaturedGallery />} />
         <Route path="/cv-maker" element={<SeoLanding slug="cv-maker" />} />
@@ -86,13 +87,15 @@ const AuthenticatedApp = () => {
         <Route path="/ats-cv" element={<SeoLanding slug="ats-cv" />} />
         <Route path="/career-advice" element={<CareerAdvice />} />
         <Route path="/cover-letter-guide" element={<CoverLetterGuide />} />
-        <Route path="/dashboard" element={<CareerDashboard />} />
-        <Route path="/career" element={<CareerDashboard />} />
-        <Route path="/career/job-matcher" element={<JobMatcher />} />
-        <Route path="/career/cover-letter" element={<CoverLetterGenerator />} />
+        <Route path="/dashboard" element={<ToolsHub />} />
+        <Route path="/career" element={<ToolsHub />} />
+        <Route path="/tools" element={<ToolsHub />} />
+        <Route path="/tools/:toolId" element={<SingleToolPage />} />
+        <Route path="/career/job-matcher" element={<SingleToolPage explicitToolId="job-description-analyzer" />} />
+        <Route path="/career/cover-letter" element={<SingleToolPage explicitToolId="cover-letter-generator" />} />
         <Route path="/career/interview-coach" element={<InterviewCoach />} />
-        <Route path="/career/applications" element={<ApplicationTracker />} />
-        <Route path="/tracker" element={<ApplicationTracker />} />
+        <Route path="/career/applications" element={<SingleToolPage explicitToolId="application-package-generator" />} />
+        <Route path="/tracker" element={<SingleToolPage explicitToolId="application-package-generator" />} />
         <Route path="/profile/edit" element={<ProfessionalProfile />} />
         <Route path="/career/profile" element={<ProfessionalProfile />} />
         <Route path="/portfolio/edit" element={<PortfolioBuilder />} />

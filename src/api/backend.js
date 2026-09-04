@@ -27,9 +27,14 @@ export class AuthRequiredError extends Error {
  * into the exceptions the callers already expect.
  */
 async function callFunction(name, body = {}) {
+  const { auth } = await import('@/lib/firebase');
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`/api/functions/${name}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body)
   });
   
@@ -171,3 +176,4 @@ export async function sendContact({ name, email, subject, message }) {
 export async function deleteAccount() {
   await callFunction("delete-account", {});
 }
+
