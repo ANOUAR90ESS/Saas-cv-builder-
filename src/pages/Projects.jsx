@@ -8,6 +8,7 @@ import { loadAllCVs, upsertCV, deleteCV, duplicateCV } from "@/lib/cvStorage";
 // Loaded when a download is asked for, not when the list is opened — see the
 // note in Builder.jsx.
 import MiniCVPreview from "@/components/cv/MiniCVPreview";
+import PaywallDialog from "@/components/billing/PaywallDialog";
 import PullToRefresh from "@/components/PullToRefresh";
 import SheetSelect from "@/components/builder/SheetSelect";
 import Seo from "@/components/Seo";
@@ -20,6 +21,10 @@ export default function Projects() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("updated");
   const [tagFilter, setTagFilter] = useState(null);
+  // Which CV and format the visitor was refused for, so the download can be
+  // finished the moment it is paid for.
+  const [paywall, setPaywall] = useState(null);
+  const [downloadError, setDownloadError] = useState("");
   const [confirmId, setConfirmId] = useState(null);
 
   const refresh = () => setRecords(loadAllCVs() || []);
@@ -72,17 +77,24 @@ export default function Projects() {
     refresh();
   };
 
+  // The file comes from the server now, so a refusal for want of payment is a
+  // normal answer rather than a failure — see serverExport.js.
   const download = async (cv, format) => {
     try {
-      if (format === "docx") {
-        const { exportDocx } = await import("@/lib/docxExport");
-        await exportDocx(cv);
-      } else {
-        const { exportPDF } = await import("@/lib/pdfExport");
-        await exportPDF(cv);
-      }
+      const { exportPDF, exportDocx } = await import("@/lib/serverExport");
+      await (format === "docx" ? exportDocx(cv) : exportPDF(cv));
     } catch (e) {
+      if (e?.name === "PaymentRequiredError") {
+        setPaywall({ cv, kind: format === "docx" ? "docx" : "pdf" });
+        return;
+      }
       console.error(`${format === "docx" ? "DOCX" : "PDF"} export failed`, e);
+      setDownloadError(
+        e?.name === "ExportUnavailableError"
+          ? "Downloads are unavailable right now. Please try again shortly."
+          : "That download did not work. Please try again."
+      );
+      setTimeout(() => setDownloadError(""), 5000);
     }
   };
 
@@ -221,6 +233,23 @@ export default function Projects() {
         </>
       )}
       </div>
+
+      {downloadError ? (
+        <p className="fixed bottom-4 inset-x-4 z-40 text-center text-sm bg-background border border-border rounded-xl py-2 px-3 shadow" role="alert">
+          {downloadError}
+        </p>
+      ) : null}
+
+      <PaywallDialog
+        open={paywall !== null}
+        kind={paywall?.kind}
+        onClose={() => setPaywall(null)}
+        onPaid={() => {
+          const pending = paywall;
+          setPaywall(null);
+          if (pending) download(pending.cv, pending.kind);
+        }}
+      />
     </PullToRefresh>
   );
 }

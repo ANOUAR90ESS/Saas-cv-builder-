@@ -20,6 +20,7 @@ import {
 } from './src/server/exportFiles.ts';
 import {
   claimPurchases,
+  claimTokenForTransaction,
   consumeCredit,
   getEntitlement,
   markEventSeen,
@@ -770,6 +771,30 @@ SCHEMA:
     } catch (error: any) {
       console.error('Consume failed:', error);
       res.status(500).json({ error: 'Could not start your download. Please try again.' });
+    }
+  });
+
+  /**
+   * Trades a completed transaction id for its claim token.
+   *
+   * The gap this closes: the webhook records a guest purchase server-side, so
+   * the browser that paid has no way of knowing which row is its own. Paddle
+   * hands the buyer's own browser the transaction id, and that is what comes
+   * back here.
+   */
+  app.post('/api/billing/claim-transaction', async (req, res) => {
+    if (!isBillingConfigured) {
+      return res.status(503).json({ error: 'Billing is not configured in this environment.' });
+    }
+    const transactionId = String(req.body?.transactionId || '');
+    if (!transactionId) return res.status(400).json({ error: 'No transaction supplied.' });
+    try {
+      // Null covers all of: not recorded yet, already spent, already on an
+      // account. The client polls, because the webhook may still be in flight.
+      res.json({ claimToken: await claimTokenForTransaction(transactionId) });
+    } catch (error: any) {
+      console.error('Claim-transaction failed:', error);
+      res.status(500).json({ error: 'Could not look up that purchase.' });
     }
   });
 

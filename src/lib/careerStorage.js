@@ -634,7 +634,7 @@ export function calculateCareerScore({ cv, profile, applications, interviewSessi
 // ------------------------------------------------------------- FIRESTORE SYNC
 
 async function syncCareerProfileToFirestore(profile) {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) return;
   try {
     const { db, fs } = await getFirestoreApi();
@@ -658,7 +658,7 @@ async function syncCareerProfileToFirestore(profile) {
 }
 
 async function syncApplicationToFirestore(app) {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) return;
   try {
     const { db, fs } = await getFirestoreApi();
@@ -684,7 +684,7 @@ async function syncApplicationToFirestore(app) {
 }
 
 async function deleteApplicationFromFirestore(id) {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) return;
   try {
     const { db, fs } = await getFirestoreApi();
@@ -696,7 +696,7 @@ async function deleteApplicationFromFirestore(id) {
 }
 
 async function syncCoverLetterToFirestore(letter) {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) return;
   try {
     const { db, fs } = await getFirestoreApi();
@@ -721,7 +721,7 @@ async function syncCoverLetterToFirestore(letter) {
 }
 
 async function deleteCoverLetterFromFirestore(id) {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) return;
   try {
     const { db, fs } = await getFirestoreApi();
@@ -733,7 +733,7 @@ async function deleteCoverLetterFromFirestore(id) {
 }
 
 async function syncInterviewSessionToFirestore(session) {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
   if (!user) return;
   try {
     const { db, fs } = await getFirestoreApi();

@@ -47,6 +47,20 @@ async function saveUserProfile(fbUser) {
   }
 }
 
+/**
+ * Thrown by every call that genuinely needs Firebase when there is none.
+ *
+ * The alternative was a TypeError on `auth.currentUser` reaching the UI as
+ * "Cannot read properties of null", which tells a user nothing and sends a
+ * developer to the wrong file.
+ */
+function notConfigured() {
+  return new Error(
+    'Accounts are unavailable here: this deployment has no Firebase configuration. ' +
+      'Your CV is saved on this device and can still be downloaded.'
+  );
+}
+
 /** Format a user from Firebase */
 function formatFirebaseUser(user) {
   if (!user) return null;
@@ -82,7 +96,10 @@ function cleanAuthError(err) {
 
 /** The signed-in user, or null. Never throws for "nobody is signed in". */
 export async function currentUser() {
-  if (auth.currentUser) {
+  // No Firebase means nobody is signed in, which is a normal state here rather
+  // than an error: the app is built to be used without an account.
+  if (!auth) return null;
+  if (auth?.currentUser) {
     return formatFirebaseUser(auth.currentUser);
   }
   return new Promise((resolve) => {
@@ -98,12 +115,19 @@ export async function currentUser() {
  * refreshing, a sign-out in another tab. Returns an unsubscribe function.
  */
 export function onAuthChange(fn) {
+  // Nothing can change, so report the one state there is and hand back an
+  // unsubscribe that is safe to call.
+  if (!auth) {
+    fn(null);
+    return () => {};
+  }
   return onAuthStateChanged(auth, (fbUser) => {
     fn(formatFirebaseUser(fbUser));
   });
 }
 
 export async function signOut() {
+  if (!auth) return;
   try {
     await fbSignOut(auth);
   } catch (err) {
@@ -114,6 +138,7 @@ export async function signOut() {
 // ---------------------------------------------------------------- sign in
 
 export async function signInWithPassword(email, password) {
+  if (!auth) throw notConfigured();
   try {
     const result = await signInWithEmailAndPassword(auth, email, password);
     return formatFirebaseUser(result.user);
@@ -126,6 +151,7 @@ export async function signInWithPassword(email, password) {
  * Hands off to Google sign-in using Firebase Auth popup.
  */
 export async function signInWithGoogle() {
+  if (!auth) throw notConfigured();
   try {
     const result = await signInWithPopup(auth, googleAuthProvider);
     const fbUser = result.user;
@@ -143,6 +169,7 @@ export async function signInWithGoogle() {
 
 /** Creates the account via Firebase Auth. */
 export async function register(email, password) {
+  if (!auth) throw notConfigured();
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     const fbUser = result.user;
@@ -161,7 +188,7 @@ export async function verifyEmail() {
 }
 
 export async function resendVerification() {
-  if (auth.currentUser) {
+  if (auth?.currentUser) {
     try {
       await sendEmailVerification(auth.currentUser);
     } catch (err) {
@@ -175,6 +202,7 @@ export async function resendVerification() {
 
 /** Emails a link to reset password via Firebase Auth. */
 export async function requestPasswordReset(email) {
+  if (!auth) throw notConfigured();
   try {
     await sendPasswordResetEmail(auth, email);
     return true;
@@ -187,7 +215,7 @@ export async function requestPasswordReset(email) {
  * Sets a new password for whoever the current session belongs to.
  */
 export async function setPassword(newPassword) {
-  if (!auth.currentUser) {
+  if (!auth?.currentUser) {
     throw new Error("No active user session");
   }
   try {
@@ -202,7 +230,7 @@ export async function setPassword(newPassword) {
  * Changes the password, re-authenticating with the current password first.
  */
 export async function changePassword(email, currentPassword, newPassword) {
-  if (!auth.currentUser) {
+  if (!auth?.currentUser) {
     throw new Error("No active user session");
   }
   try {
@@ -219,7 +247,7 @@ export async function changePassword(email, currentPassword, newPassword) {
 
 /** Stores the display name on the user's profile. */
 export async function updateProfile({ full_name }) {
-  if (!auth.currentUser) {
+  if (!auth?.currentUser) {
     throw new Error("No active user session");
   }
   try {

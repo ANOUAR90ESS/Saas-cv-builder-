@@ -6,8 +6,12 @@
 // applicant tracking systems that accept .docx often rejected it outright —
 // while the UI offered it as DOCX. It is now a genuine OOXML package.
 //
-// The library is loaded on demand: it is only needed when someone exports, and
-// pulling it into the builder's own chunk would make every visit pay for it.
+// This module now runs on the server, not in the browser. buildDocxBlob is
+// the whole of it: renderDocx in src/server/exportFiles.ts calls it and sends
+// the bytes back. The download helpers that used to live here -- a blob URL on
+// an `<a download>`, and the Android share-sheet variant -- moved to
+// serverExport.js, which is where a file that arrived over the network gets
+// handed to the user.
 import { dateRange, fmtDate } from "./dates";
 import { SECTION_LABELS, getActiveCvLang, setActiveCvLang, levelLabel } from "./cvSchema";
 
@@ -173,31 +177,4 @@ export async function buildDocxBlob(cv) {
   });
 
   return Packer.toBlob(doc);
-}
-
-const DOCX_MIME =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
-function docxFileName(cv) {
-  return `${(cv.title || "cv").replace(/\s+/g, "_")}.docx`;
-}
-
-// The same document, handed to Android instead of to the browser — the blob
-// URL below does nothing in the WebView. See nativeSave.js.
-export async function exportDocxNative(cv) {
-  const { saveAndShareFile, blobToBase64 } = await import("./nativeSave");
-  const blob = await buildDocxBlob(cv);
-  await saveAndShareFile(docxFileName(cv), await blobToBase64(blob), DOCX_MIME);
-}
-
-export async function exportDocx(cv) {
-  const blob = await buildDocxBlob(cv);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = docxFileName(cv);
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }

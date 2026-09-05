@@ -212,6 +212,34 @@ export async function markEventSeen(
   return inserted.length > 0;
 }
 
+/**
+ * The claim token for a transaction the buyer just completed.
+ *
+ * A guest purchase is recorded by the webhook, which goes to the server -- the
+ * browser is never told the token that proves it owns the purchase. Paddle
+ * does hand the buyer's own browser the transaction id, so that is what it
+ * trades in for the token.
+ *
+ * The id is unguessable and Paddle gives it only to the buyer, so it works as
+ * a bearer proof. It is deliberately narrow: only an unconsumed purchase with
+ * no account attached returns anything, so a leaked id is worthless once the
+ * download is spent or the purchase belongs to someone.
+ */
+export async function claimTokenForTransaction(transactionId: string): Promise<string | null> {
+  const rows = await db
+    .select()
+    .from(purchases)
+    .where(
+      and(
+        eq(purchases.transactionId, transactionId),
+        isNull(purchases.userId),
+        isNull(purchases.consumedAt)
+      )
+    )
+    .limit(1);
+  return rows[0]?.claimToken ?? null;
+}
+
 /** Attaches guest purchases to an account, so signing in keeps what was bought. */
 export async function claimPurchases(userId: number, claimTokens: string[]): Promise<number> {
   let claimed = 0;

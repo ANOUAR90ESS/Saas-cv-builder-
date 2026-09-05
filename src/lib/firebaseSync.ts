@@ -19,7 +19,7 @@ function sanitizeDocId(id: string): string {
  * Save or update a CV in Firestore for the currently authenticated user
  */
 export async function syncCvToFirestore(cv: { id: string; title?: string; [key: string]: unknown }): Promise<void> {
-  const currentUser = auth.currentUser;
+  const currentUser = auth?.currentUser;
   if (!currentUser) return;
 
   const { db, fs } = await getFirestoreApi();
@@ -71,7 +71,7 @@ export async function syncCvToFirestore(cv: { id: string; title?: string; [key: 
  * Fetch all CVs for the authenticated user from Firestore
  */
 export async function fetchUserCvsFromFirestore(): Promise<any[]> {
-  const currentUser = auth.currentUser;
+  const currentUser = auth?.currentUser;
   if (!currentUser) return [];
 
   const { db, fs } = await getFirestoreApi();
@@ -92,7 +92,7 @@ export async function fetchUserCvsFromFirestore(): Promise<any[]> {
  * Delete a CV document from Firestore
  */
 export async function deleteCvFromFirestore(cvId: string): Promise<void> {
-  const currentUser = auth.currentUser;
+  const currentUser = auth?.currentUser;
   if (!currentUser) return;
 
   const { db, fs } = await getFirestoreApi();

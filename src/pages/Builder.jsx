@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { Download, FileType, Check, Eye, Pencil, LayoutTemplate, Palette, ListOrdered, User, Sparkles, Printer, Linkedin, FolderOpen, ChevronLeft, HelpCircle, Gauge, X, ChevronDown, FileText } from "lucide-react";
 import { useSmartBack } from "@/hooks/useSmartBack";
 import SheetSelect from "@/components/builder/SheetSelect";
+import PaywallDialog from "@/components/billing/PaywallDialog";
 import { BRAND } from "@/components/Layout";
 import { LogoMark } from "@/components/Logo";
 import Seo from "@/components/Seo";
@@ -33,7 +34,6 @@ import TemplateRenderer from "@/components/cv/TemplateRenderer";
 import ImportDialog from "@/components/builder/ImportDialog";
 import WelcomeGuide from "@/components/builder/WelcomeGuide";
 import CVScore from "@/components/builder/CVScore";
-import { Capacitor } from "@capacitor/core";
 // jsPDF, html2canvas and docx are imported inside the export handlers, not
 // here. Together they are the heaviest thing this page can reach, and none of
 // them is touched until someone asks for a file — as static imports they were
@@ -84,6 +84,9 @@ export default function Builder() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [exportingDocx, setExportingDocx] = useState(false);
   const [exportNotice, setExportNotice] = useState("");
+  // Set when the server answers 402: which format was wanted, so the download
+  // can be retried the moment it is paid for.
+  const [paywall, setPaywall] = useState(null);
   const saveTimer = useRef(null);
   const [guideOpen, setGuideOpen] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
@@ -171,51 +174,50 @@ export default function Builder() {
   const importProfile = (p) => setCv((c) => ({ ...c, ...p, personal_info: { ...c.personal_info, ...(p.personal_info || {}) } }));
 
   const doPrint = () => window.print();
-  // Inside the Android shell the browser download does nothing at all, so the
-  // export has to go out through the share sheet instead — see nativeSave.js.
-  const native = Capacitor.isNativePlatform();
-  const doExportPDF = async () => {
-    if (exportingPdf || !cv) return;
-    setExportingPdf(true);
-    setExportNotice("Preparing PDF with jsPDF...");
+  // One path for both formats, because the interesting part is identical: the
+  // server builds the file or refuses it, and a refusal for want of payment is
+  // a checkout rather than an error.
+  const runExport = async (kind, setBusy) => {
+    if (!cv) return;
+    setBusy(true);
+    setExportNotice(kind === "pdf" ? "Building your PDF..." : "Building your DOCX...");
     try {
-      const { exportPDF, exportPDFNative } = await import("@/lib/pdfExport");
-      if (native) {
-        await exportPDFNative(cv);
-      } else {
-        await exportPDF(cv);
-      }
-      setExportNotice("PDF downloaded successfully!");
+      const { exportPDF, exportDocx } = await import("@/lib/serverExport");
+      await (kind === "pdf" ? exportPDF(cv) : exportDocx(cv));
+      setExportNotice("Downloaded.");
       setTimeout(() => setExportNotice(""), 3500);
     } catch (e) {
-      console.error("PDF export failed", e);
-      setExportNotice("PDF export encountered an issue. Please try again.");
-      setTimeout(() => setExportNotice(""), 4000);
+      if (e?.name === "PaymentRequiredError") {
+        setExportNotice("");
+        setPaywall({ kind });
+        return;
+      }
+      if (e?.name === "ExportUnavailableError") {
+        console.error("Export unavailable", e);
+        setExportNotice("Downloads are unavailable right now. Please try again shortly.");
+        setTimeout(() => setExportNotice(""), 5000);
+        return;
+      }
+      console.error(`${kind} export failed`, e);
+      setExportNotice(
+        navigator.onLine === false
+          ? "Downloading needs a connection. Your CV is safe on this device."
+          : "That download did not work. Please try again."
+      );
+      setTimeout(() => setExportNotice(""), 5000);
     } finally {
-      setExportingPdf(false);
+      setBusy(false);
     }
   };
 
+  const doExportPDF = async () => {
+    if (exportingPdf) return;
+    await runExport("pdf", setExportingPdf);
+  };
+
   const doExportDocx = async () => {
-    if (exportingDocx || !cv) return;
-    setExportingDocx(true);
-    setExportNotice("Generating DOCX document...");
-    try {
-      const { exportDocx, exportDocxNative } = await import("@/lib/docxExport");
-      if (native) {
-        await exportDocxNative(cv);
-      } else {
-        await exportDocx(cv);
-      }
-      setExportNotice("DOCX downloaded successfully!");
-      setTimeout(() => setExportNotice(""), 3500);
-    } catch (e) {
-      console.error("DOCX export failed", e);
-      setExportNotice("DOCX export encountered an issue. Please try again.");
-      setTimeout(() => setExportNotice(""), 4000);
-    } finally {
-      setExportingDocx(false);
-    }
+    if (exportingDocx) return;
+    await runExport("docx", setExportingDocx);
   };
 
   const setCollection = (key) => (items) => patch({ [key]: items });
@@ -639,6 +641,20 @@ export default function Builder() {
           </div>
         </div>
       )}
+
+      <PaywallDialog
+        open={paywall !== null}
+        kind={paywall?.kind}
+        onClose={() => setPaywall(null)}
+        onPaid={() => {
+          // Paid and the entitlement has landed, so finish what they asked
+          // for rather than making them press Download a second time.
+          const kind = paywall?.kind;
+          setPaywall(null);
+          if (kind === "pdf") doExportPDF();
+          else if (kind === "docx") doExportDocx();
+        }}
+      />
     </div>
   );
 }

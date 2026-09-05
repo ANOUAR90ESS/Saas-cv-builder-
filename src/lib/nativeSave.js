@@ -1,7 +1,7 @@
 // Saving a generated file from inside the Android shell.
 //
-// On the web, pdfExport and docxExport hand the browser a blob URL on an
-// `<a download>` and let it do the rest. Android's WebView does not implement
+// On the web, serverExport hands the browser a blob URL on an
+// `<a download>` and lets it do the rest. Android's WebView does not implement
 // that path: the tap does nothing, no save prompt appears, and the export
 // looks to the user like the app has frozen. Writing the bytes to the app's
 // cache with Filesystem and passing the resulting file:// URI to the system
@@ -9,7 +9,7 @@
 // the file manager — which is what someone exporting a CV is trying to do.
 //
 // Both plugins are imported here rather than at the call sites so the web
-// build never pulls them in: the exporters load this module only when
+// build never pulls them in: serverExport loads this module only when
 // Capacitor reports a native platform.
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
